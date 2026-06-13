@@ -1,14 +1,24 @@
 {
   "name": "cartographer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Webová D&D mapovací aplikace — Dungeon Mode (vektory) + World Mode (landmass masking). Běží 100% v prohlížeči, bez cloudu.",
+  "author": "Cartographer",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "preview": "npx serve out",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "icon": "node scripts/gen-icon.mjs",
+    "electron": "electron .",
+    "electron:dev": "cross-env ELECTRON_DEV=1 electron .",
+    "app": "npm run icon && npm run build && electron .",
+    "dist": "npm run icon && npm run build && electron-builder",
+    "dist:win": "npm run icon && npm run build && electron-builder --win",
+    "dist:mac": "npm run icon && npm run build && electron-builder --mac",
+    "dist:linux": "npm run icon && npm run build && electron-builder --linux"
   },
   "dependencies": {
     "immer": "^10.1.1",
@@ -26,6 +36,9 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^7.0.3",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.4.39",

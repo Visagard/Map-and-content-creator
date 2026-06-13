@@ -18,24 +18,60 @@ lokálně do IndexedDB, takže provoz i použití jsou zdarma.
 | State | Zustand + Immer (patch-based Undo/Redo) |
 | Úložiště | localForage (IndexedDB) |
 
-## Spuštění lokálně
+## 🖥️ Spuštění jako desktopová aplikace (zástupce na ploše)
+
+Aplikace je zabalená do **Electronu** — můžeš ji otevírat ikonou/zástupcem, ne přes terminál.
+Běží plně offline (statický web servíruje interní localhost server uvnitř aplikace).
+
+### Windows — instalátor se zástupcem (doporučeno)
+
+Stačí **jednou** sestavit instalátor (vyžaduje [Node.js LTS](https://nodejs.org)):
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
+npm run dist:win
 ```
 
-Produkční statický build (hostovatelný zdarma na GitHub Pages / Netlify / Vercel):
+Ve složce `dist/` vznikne **`Cartographer-Setup-…​.exe`**. Spusť ho → instalátor sám vytvoří
+**zástupce na ploše i v nabídce Start**. Od té chvíle Node.js ani terminál nepotřebuješ —
+aplikaci otevíráš jako jakýkoli jiný program. (Vznikne i `Cartographer-…-portable.exe`,
+který běží bez instalace; můžeš si na něj kliknout pravým → *Vytvořit zástupce*.)
+
+### Windows — bez instalace (jednoklikový launcher)
+
+Pokud nechceš stavět instalátor, dvakrát klikni na **`Spustit-Cartographer.bat`**
+(napoprvé doinstaluje a sestaví, pak spustí). Pravým tlačítkem na soubor →
+*Odeslat → Plocha (vytvořit zástupce)*.
+
+### macOS / Linux
 
 ```bash
-npm run build        # vygeneruje statický web do ./out
-npm run preview      # lokální náhled buildu
+npm install
+npm run dist:mac     # → dist/Cartographer-…​.dmg
+npm run dist:linux   # → dist/Cartographer-…​.AppImage
+# nebo bez balení rovnou spustit:  ./run-app.sh
+```
+
+### Rychlé spuštění desktopu z vývojového prostředí
+
+```bash
+npm run app          # sestaví a otevře aplikaci v okně Electronu
+```
+
+## Spuštění v prohlížeči / hosting zdarma
+
+```bash
+npm install
+npm run dev          # vývoj: http://localhost:3000
+npm run build        # statický web do ./out (GitHub Pages / Netlify / Vercel)
+npm run preview      # lokální náhled produkčního buildu
 ```
 
 ## Stav vývoje (iterace)
 
 - [x] **F1** — Technický design (PRD): `docs/PRD.md`
 - [x] **F2** — Skeleton: layout (TopBar / ToolRail / panel / StatusBar), Konva plátno s pan/zoom, přepínač World/Dungeon, Zustand store + patch-historie
+- [x] **F2.5** — Desktop balení: Electron wrapper (offline, interní server), generátor ikony, electron-builder pro Windows/macOS/Linux, launchery
 - [ ] **F3** — Kreslicí engine: Land Brush, Eraser, Room tool, Undo/Redo na každou akci, autosave do IndexedDB
 - [ ] **F4** — Landmass Masking (`globalCompositeOperation`) + texturový štětec
 - [ ] **F5** — Asset tool (drag-and-drop import), procedurální generátor dungeonu, export PNG/WebP do 8K
