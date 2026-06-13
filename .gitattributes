@@ -1,0 +1,6 @@
+# Windows dávkové soubory musí mít CRLF, jinak je cmd.exe může chybně parsovat
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Skripty pro unixové shelly drží LF
+*.sh text eol=lf

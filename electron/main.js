@@ -35,17 +35,23 @@ function startServer() {
       try {
         let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
         if (urlPath.endsWith('/')) urlPath += 'index.html';
-        let filePath = path.normalize(path.join(OUT_DIR, urlPath));
-        if (!filePath.startsWith(OUT_DIR)) {
+        const filePath = path.normalize(path.join(OUT_DIR, urlPath));
+        // Path-traversal guard: musí být POD OUT_DIR (porovnáváme s odděleovačem,
+        // ať neprojde sourozenec jako "out-secret").
+        if (filePath !== OUT_DIR && !filePath.startsWith(OUT_DIR + path.sep)) {
           res.writeHead(403);
           return res.end('Forbidden');
         }
-        const send = (fp, fallbackToIndex) => {
+        const send = (fp, onMissing) => {
           fs.readFile(fp, (err, data) => {
             if (err) {
-              if (fallbackToIndex) return send(path.join(OUT_DIR, 'index.html'), false);
-              res.writeHead(404);
-              return res.end('Not found');
+              if (onMissing) return onMissing();
+              // Styled 404 z exportu, jinak prostý text
+              fs.readFile(path.join(OUT_DIR, '404.html'), (e2, html) => {
+                res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(e2 ? 'Not found' : html);
+              });
+              return;
             }
             res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' });
             res.end(data);
@@ -54,9 +60,9 @@ function startServer() {
         const ext = path.extname(filePath);
         if (!ext) {
           // route bez přípony → zkus route.html, jinak SPA fallback na index.html
-          send(filePath + '.html', true);
+          send(filePath + '.html', () => send(path.join(OUT_DIR, 'index.html'), null));
         } else {
-          send(filePath, false);
+          send(filePath, null);
         }
       } catch {
         res.writeHead(500);
@@ -124,7 +130,7 @@ async function createWindow() {
 
   // Smoke test (aktivní jen s CARTO_SMOKE=1) — ověří, že se okno načte, pak ukončí.
   if (process.env.CARTO_SMOKE) {
-    mainWindow.webContents.on('did-finish-load', async () => {
+    mainWindow.webContents.once('did-finish-load', async () => {
       try {
         // Počkej, než se domountuje dynamicky načtené Konva plátno
         await new Promise((r) => setTimeout(r, 1500));

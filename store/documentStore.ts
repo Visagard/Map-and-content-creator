@@ -7,6 +7,7 @@ import {
 } from 'immer';
 import {
   createEmptyDocument,
+  type EditorMode,
   type MapDocument,
 } from '@/lib/types';
 
@@ -43,6 +44,11 @@ interface DocumentState {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+
+  /** Smaže položené prvky podle id z dané scény (jeden krok historie). */
+  deleteAssets: (mode: EditorMode, ids: string[]) => void;
+  /** Odstraní všechny instance odkazující na daný assetId (po smazání z knihovny). */
+  removeByAssetId: (assetId: string) => void;
 
   /** Nahradí dokument (load z IndexedDB / nový soubor) a vyčistí historii. */
   loadDocument: (doc: MapDocument) => void;
@@ -121,6 +127,37 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
+
+  deleteAssets: (mode, ids) => {
+    if (ids.length === 0) return;
+    get().apply('Smazání prvku', (d) => {
+      const scene = mode === 'world' ? d.world : d.dungeon;
+      ids.forEach((id) => {
+        delete scene.assets[id];
+        const i = scene.assetOrder.indexOf(id);
+        if (i >= 0) scene.assetOrder.splice(i, 1);
+      });
+    });
+  },
+
+  removeByAssetId: (assetId) => {
+    const { world, dungeon } = get().doc;
+    const orphans =
+      Object.values(world.assets).some((a) => a.assetId === assetId) ||
+      Object.values(dungeon.assets).some((a) => a.assetId === assetId);
+    if (!orphans) return;
+    get().apply('Odebrání prvku z knihovny', (d) => {
+      for (const scene of [d.world, d.dungeon]) {
+        for (const id of [...scene.assetOrder]) {
+          if (scene.assets[id]?.assetId === assetId) {
+            delete scene.assets[id];
+            const i = scene.assetOrder.indexOf(id);
+            if (i >= 0) scene.assetOrder.splice(i, 1);
+          }
+        }
+      }
+    });
+  },
 
   loadDocument: (doc) => set({ doc, past: [], future: [], batch: null }),
   resetDocument: () =>

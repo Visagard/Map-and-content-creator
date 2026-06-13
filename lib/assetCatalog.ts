@@ -327,15 +327,25 @@ const RAW: Record<CategoryId, [string, string, string][]> = {
   ],
 };
 
-export const CATALOG: CatalogAsset[] = (Object.keys(RAW) as CategoryId[]).flatMap((cat) =>
-  RAW[cat].map((row, i) => ({
-    id: `cat:${cat}:${i}`,
-    emoji: row[0],
-    name: row[1],
-    category: cat,
-    tags: row[2].split(/\s+/).filter(Boolean),
-  })),
-);
+// ID odvozené ze stabilního slugu názvu (NE z indexu) → změna pořadí/přidání
+// prvku nerozbije dříve uložené mapy.
+function slugId(name: string): string {
+  return normalize(name).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+export const CATALOG: CatalogAsset[] = (() => {
+  const out: CatalogAsset[] = [];
+  const seen = new Set<string>();
+  for (const cat of Object.keys(RAW) as CategoryId[]) {
+    for (const row of RAW[cat]) {
+      let id = `cat:${cat}:${slugId(row[1])}`;
+      while (seen.has(id)) id += '_'; // pojistka proti kolizi slugů
+      seen.add(id);
+      out.push({ id, emoji: row[0], name: row[1], category: cat, tags: row[2].split(/\s+/).filter(Boolean) });
+    }
+  }
+  return out;
+})();
 
 const BY_ID = new Map(CATALOG.map((a) => [a.id, a]));
 export function catalogById(id: string): CatalogAsset | undefined {

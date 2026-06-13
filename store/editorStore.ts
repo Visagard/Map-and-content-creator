@@ -71,7 +71,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSelection: (ids) => set({ selection: ids }),
   clearSelection: () => set({ selection: [] }),
   setCursor: (pos) => set({ cursor: pos }),
-  pickStampAsset: (assetId) => set({ stampAssetId: assetId, tool: 'asset' }),
+  pickStampAsset: (assetId) => set({ stampAssetId: assetId, tool: 'asset', selection: [] }),
 }));
 
 export const BRUSH_LIMITS = { min: BRUSH_MIN, max: BRUSH_MAX };

@@ -89,7 +89,7 @@ export default function AssetPanel() {
 
         <div className="mt-2 flex items-center justify-between">
           <span className="text-[11px] text-ink-400">
-            {total} z {CATALOG_COUNT + customs.length} prvků
+            {query || filter !== 'all' ? `Nalezeno: ${total}` : `${CATALOG_COUNT + customs.length} prvků`}
           </span>
           <button
             onClick={() => fileInput.current?.click()}

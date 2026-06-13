@@ -53,5 +53,24 @@ s().undo();
 assert(s().doc.dungeon.roomOrder.length === 0, 'dungeon: místnost vrácena');
 assert(s().doc.world.terrainOrder.length === 1, 'World data zůstala při undo v dungeonu');
 
+// ---- Asset akce: deleteAssets + removeByAssetId ----
+s().resetDocument();
+s().apply('add', (d) => {
+  d.world.assets['a1'] = { id: 'a1', assetId: 'cat:priroda-smrk', x: 0, y: 0, rotation: 0, scale: 1, flipX: false };
+  d.world.assets['a2'] = { id: 'a2', assetId: 'usr:img1', x: 10, y: 10, rotation: 0, scale: 1, flipX: false };
+  d.world.assetOrder.push('a1', 'a2');
+});
+assert(s().doc.world.assetOrder.length === 2, 'assety: dva položené');
+
+s().deleteAssets('world', ['a1']);
+assert(s().doc.world.assetOrder.length === 1 && !s().doc.world.assets['a1'], 'deleteAssets: a1 smazán');
+assert(s().doc.world.assetOrder[0] === 'a2', 'deleteAssets: pořadí zachováno');
+s().undo();
+assert(s().doc.world.assetOrder.length === 2, 'deleteAssets: undo obnovil');
+
+s().removeByAssetId('usr:img1');
+assert(!s().doc.world.assets['a2'] && s().doc.world.assetOrder.length === 1, 'removeByAssetId: osiřelý prvek odstraněn');
+assert(!!s().doc.world.assets['a1'], 'removeByAssetId: ostatní prvky zůstaly');
+
 console.log(failed ? '\nNĚKTERÉ TESTY SELHALY' : '\nVŠECHNY TESTY PROŠLY ✓');
 process.exit(failed ? 1 : 0);

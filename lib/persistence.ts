@@ -20,8 +20,8 @@ export async function loadCurrentDocument(): Promise<MapDocument | null> {
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 
-/** Debounced write-behind autosave (default 1,2 s po poslední změně). */
-export function scheduleSave(doc: MapDocument, delay = 1200): void {
+/** Debounced write-behind autosave (default 800 ms po poslední změně). */
+export function scheduleSave(doc: MapDocument, delay = 800): void {
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => {
     store.setItem(CURRENT_KEY, doc).catch(() => {});

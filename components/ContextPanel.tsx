@@ -85,6 +85,7 @@ function SelectionProperties() {
   const selection = useEditorStore((s) => s.selection);
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const apply = useDocumentStore((s) => s.apply);
+  const deleteAssets = useDocumentStore((s) => s.deleteAssets);
 
   if (selection.length === 0) {
     return (
@@ -104,14 +105,7 @@ function SelectionProperties() {
     });
 
   const remove = () => {
-    apply('Smazání prvku', (d) => {
-      const scene = mode === 'world' ? d.world : d.dungeon;
-      selection.forEach((id) => {
-        delete scene.assets[id];
-        const i = scene.assetOrder.indexOf(id);
-        if (i >= 0) scene.assetOrder.splice(i, 1);
-      });
-    });
+    deleteAssets(mode, selection);
     clearSelection();
   };
 

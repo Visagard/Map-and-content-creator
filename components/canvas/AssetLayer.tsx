@@ -55,14 +55,14 @@ function AssetNode({
       offsetX={w / 2}
       offsetY={h / 2}
       rotation={asset.rotation}
-      scaleX={asset.scale}
+      scaleX={asset.scale * (asset.flipX ? -1 : 1)}
       scaleY={asset.scale}
       draggable={listening}
       listening={listening}
       perfectDrawEnabled={false}
-      onMouseDown={(e) => {
+      onPointerDown={(e) => {
         if (listening) {
-          e.cancelBubble = true; // ať se neaktivuje "klik do prázdna = zrušit výběr"
+          e.cancelBubble = true; // stejný (pointer) event jako Stage → nezruší výběr
           onSelect(asset.id);
         }
       }}
@@ -70,11 +70,12 @@ function AssetNode({
       onDragEnd={(e) => onChange(asset.id, { x: e.target.x(), y: e.target.y() })}
       onTransformEnd={(e) => {
         const node = e.target;
+        // Transformer mění scaleX/scaleY; magnitudu uložíme jako scale, flip zachováme.
         onChange(asset.id, {
           x: node.x(),
           y: node.y(),
           rotation: node.rotation(),
-          scale: Math.max(0.05, node.scaleX()),
+          scale: Math.max(0.05, Math.abs(node.scaleX())),
         });
       }}
     />

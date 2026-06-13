@@ -256,15 +256,19 @@ export default function MapCanvas() {
   };
 
   const handlePointerMove = () => {
-    const w = toWorld();
-    if (!w) return;
-    setCursor(w);
+    const p = stageRef.current?.getPointerPosition();
+    if (!p) return;
 
     if (panStart.current) {
-      const p = stageRef.current!.getPointerPosition()!;
-      setCamera({ x: panStart.current.camX + (p.x - panStart.current.px), y: panStart.current.camY + (p.y - panStart.current.py) });
-      return;
+      setCamera({
+        x: panStart.current.camX + (p.x - panStart.current.px),
+        y: panStart.current.camY + (p.y - panStart.current.py),
+      });
+      return; // během panu kurzor neaktualizujeme (zbytečné store zápisy)
     }
+
+    const w = { x: (p.x - camera.x) / camera.scale, y: (p.y - camera.y) / camera.scale };
+    setCursor(w);
 
     if (liveStroke.current) {
       liveStroke.current.points.push(w.x, w.y);
