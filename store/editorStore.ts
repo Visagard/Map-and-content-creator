@@ -45,7 +45,7 @@ const clampBrush = (n: number) => Math.min(BRUSH_MAX, Math.max(BRUSH_MIN, Math.r
 export const useEditorStore = create<EditorState>((set, get) => ({
   mode: 'world',
   tool: 'landBrush',
-  brush: { size: 64, textureId: null },
+  brush: { size: 64, textureId: 'grass' },
   camera: { x: 0, y: 0, scale: 1 },
   selection: [],
   stampAssetId: null,

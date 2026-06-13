@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { useKeyboardShortcuts } from '@/lib/useKeyboardShortcuts';
 import { useAutosave } from '@/lib/useAutosave';
 import { useEditorStore } from '@/store/editorStore';
+import { useDocumentStore } from '@/store/documentStore';
 import { useAssetLibStore } from '@/store/assetLibStore';
 
 // Konva potřebuje `window` → načítáme jen na klientu, nikdy při SSR/exportu.
@@ -29,6 +30,14 @@ export default function EditorShell() {
   // Načti dříve nahrané vlastní assety z IndexedDB
   useEffect(() => {
     useAssetLibStore.getState().loadAll();
+  }, []);
+
+  // Testovací hák pro smoke (jen s ?smoke v URL) — zpřístupní store pro ověření maskování
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('smoke')) {
+      (window as unknown as Record<string, unknown>).__doc = useDocumentStore;
+      (window as unknown as Record<string, unknown>).__editor = useEditorStore;
+    }
   }, []);
 
   return (

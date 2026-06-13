@@ -16,15 +16,15 @@ export default function BrushCursor() {
   const isBrush = tool === 'landBrush' || tool === 'textureBrush' || tool === 'erase';
   if (!isBrush || !cursor) return null;
 
-  const erasing = tool === 'erase';
+  const color = tool === 'erase' ? '#e06f6f' : tool === 'textureBrush' ? '#7fb86a' : '#c9913f';
   return (
     <Circle
       x={cursor.x}
       y={cursor.y}
       radius={size / 2}
-      stroke={erasing ? '#e06f6f' : '#c9913f'}
+      stroke={color}
       strokeWidth={1.5 / scale}
-      dash={erasing ? [6 / scale, 4 / scale] : undefined}
+      dash={tool === 'erase' ? [6 / scale, 4 / scale] : undefined}
       listening={false}
       perfectDrawEnabled={false}
     />

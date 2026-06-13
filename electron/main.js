@@ -99,7 +99,7 @@ async function createWindow() {
     startUrl = 'http://localhost:3000';
   } else {
     const port = await startServer();
-    startUrl = `http://127.0.0.1:${port}/`;
+    startUrl = `http://127.0.0.1:${port}/${process.env.CARTO_SMOKE ? '?smoke' : ''}`;
   }
 
   mainWindow = new BrowserWindow({
@@ -136,6 +136,32 @@ async function createWindow() {
           'document.querySelectorAll("canvas").length',
         );
         console.log(`[smoke] loaded title="${title}" shellVisible=${ok} konvaCanvases=${canvases}`);
+
+        // Test Landmass Masking: textura se musí udržet jen na pevnině, do vody ne.
+        const mask = await mainWindow.webContents.executeJavaScript(`
+          (async () => {
+            const doc = window.__doc, editor = window.__editor;
+            if (!doc || !editor) return { err: 'store nedostupný' };
+            editor.getState().setMode('world');
+            doc.getState().resetDocument();
+            doc.getState().apply('land', (d) => {
+              d.world.terrainStrokes['L1'] = { id:'L1', kind:'land', points:[160,200,440,200], size:80 };
+              d.world.terrainOrder.push('L1');
+            });
+            doc.getState().apply('tex', (d) => {
+              d.world.terrainStrokes['T1'] = { id:'T1', kind:'texture', points:[300,200,520,200], size:60, textureId:'grass' };
+              d.world.terrainOrder.push('T1');
+            });
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            await new Promise(r => setTimeout(r, 250));
+            const terrain = document.querySelectorAll('canvas')[1];
+            const pr = terrain.width / terrain.getBoundingClientRect().width;
+            const ctx = terrain.getContext('2d');
+            const at = (x,y) => { const d = ctx.getImageData(Math.round(x*pr), Math.round(y*pr), 1, 1).data; return { r:d[0], g:d[1], b:d[2], a:d[3] }; };
+            return { A: at(350,200), B: at(500,200), C: at(200,200) };
+          })()
+        `);
+        console.log(`[smoke] masking ${JSON.stringify(mask)}`);
         setTimeout(() => app.quit(), 400);
       } catch (e) {
         console.log('[smoke] eval error', e);

@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Konva from 'konva';
-import { Stage, Layer, Line, Rect } from 'react-konva';
+import { Stage, Layer, Line, Rect, Shape } from 'react-konva';
 import { useEditorStore } from '@/store/editorStore';
 import { useDocumentStore } from '@/store/documentStore';
 import { useAssetLibStore } from '@/store/assetLibStore';
 import BrushCursor from './BrushCursor';
 import AssetLayer from './AssetLayer';
+import TextureStroke, { paintTextureStroke } from './TextureStroke';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const SCALE_MIN = 0.05;
@@ -69,15 +70,17 @@ function GridLayer({ view, baseCell, scale, color }: { view: ViewRect; baseCell:
 }
 
 interface LiveStroke {
-  kind: 'land' | 'erase';
+  kind: 'land' | 'erase' | 'texture';
   points: number[];
   size: number;
+  textureId?: string;
 }
 
 export default function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const liveLineRef = useRef<Konva.Line>(null);
+  const liveShapeRef = useRef<Konva.Shape>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState(false);
 
@@ -86,6 +89,7 @@ export default function MapCanvas() {
   const tool = useEditorStore((s) => s.tool);
   const camera = useEditorStore((s) => s.camera);
   const brushSize = useEditorStore((s) => s.brush.size);
+  const textureId = useEditorStore((s) => s.brush.textureId);
   const setCamera = useEditorStore((s) => s.setCamera);
   const setCursor = useEditorStore((s) => s.setCursor);
   const stampAssetId = useEditorStore((s) => s.stampAssetId);
@@ -159,8 +163,12 @@ export default function MapCanvas() {
     if (!s) return;
     if (s.points.length < 4) s.points.push(s.points[0] + 0.01, s.points[1] + 0.01); // klik = tečka
     const id = crypto.randomUUID();
-    apply(s.kind === 'erase' ? 'Mazání pevniny' : 'Tah pevninou', (d) => {
-      d.world.terrainStrokes[id] = { id, kind: s.kind, points: s.points, size: s.size };
+    const label = s.kind === 'texture' ? 'Textura' : s.kind === 'erase' ? 'Mazání pevniny' : 'Tah pevninou';
+    apply(label, (d) => {
+      d.world.terrainStrokes[id] =
+        s.kind === 'texture'
+          ? { id, kind: 'texture', points: s.points, size: s.size, textureId: s.textureId! }
+          : { id, kind: s.kind, points: s.points, size: s.size };
       d.world.terrainOrder.push(id);
     });
   };
@@ -236,6 +244,10 @@ export default function MapCanvas() {
     if (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) {
       liveStroke.current = { kind: tool === 'erase' ? 'erase' : 'land', points: [w.x, w.y], size: brushSize };
       setStroking(true);
+    } else if (mode === 'world' && tool === 'textureBrush') {
+      if (!textureId) return;
+      liveStroke.current = { kind: 'texture', points: [w.x, w.y], size: brushSize, textureId };
+      setStroking(true);
     } else if (mode === 'dungeon' && tool === 'room') {
       const snap = (v: number) => Math.round(v / gridCell) * gridCell;
       roomStart.current = { x: snap(w.x), y: snap(w.y) };
@@ -256,10 +268,14 @@ export default function MapCanvas() {
 
     if (liveStroke.current) {
       liveStroke.current.points.push(w.x, w.y);
-      const line = liveLineRef.current;
-      if (line) {
-        line.points(liveStroke.current.points);
-        line.getLayer()?.batchDraw();
+      if (liveStroke.current.kind === 'texture') {
+        liveShapeRef.current?.getLayer()?.batchDraw();
+      } else {
+        const line = liveLineRef.current;
+        if (line) {
+          line.points(liveStroke.current.points);
+          line.getLayer()?.batchDraw();
+        }
       }
       return;
     }
@@ -295,7 +311,9 @@ export default function MapCanvas() {
   };
 
   // --- odvozené ---
-  const isDrawingTool = (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) || (mode === 'dungeon' && tool === 'room');
+  const isDrawingTool =
+    (mode === 'world' && (tool === 'landBrush' || tool === 'erase' || tool === 'textureBrush')) ||
+    (mode === 'dungeon' && tool === 'room');
   const cursorClass = isPanTool
     ? dragging
       ? 'cursor-grabbing'
@@ -340,8 +358,11 @@ export default function MapCanvas() {
               <Layer listening={false}>
                 <Rect x={view.left} y={view.top} width={view.right - view.left} height={view.bottom - view.top} fill={waterColor} perfectDrawEnabled={false} />
               </Layer>
-              {/* Terén — pevnina (land) a mazání (erase = destination-out) */}
+              {/* Terén — DVA průchody ve stejné vrstvě:
+                  1) pevnina + mazání (definuje alfa masku pevniny)
+                  2) textury se source-atop → drží se jen na pevnině, do vody se nepřelijí */}
               <Layer listening={false}>
+                {/* průchod 1: pevnina / mazání (chronologicky) */}
                 {terrainOrder.map((id) => {
                   const s = terrainStrokes[id];
                   if (!s || s.kind === 'texture') return null;
@@ -359,7 +380,7 @@ export default function MapCanvas() {
                     />
                   );
                 })}
-                {stroking && liveStroke.current && (
+                {stroking && liveStroke.current && liveStroke.current.kind !== 'texture' && (
                   <Line
                     ref={liveLineRef}
                     points={liveStroke.current.points}
@@ -370,6 +391,25 @@ export default function MapCanvas() {
                     globalCompositeOperation={liveStroke.current.kind === 'erase' ? 'destination-out' : undefined}
                     listening={false}
                     perfectDrawEnabled={false}
+                  />
+                )}
+
+                {/* průchod 2: textury (source-atop) */}
+                {terrainOrder.map((id) => {
+                  const s = terrainStrokes[id];
+                  if (!s || s.kind !== 'texture') return null;
+                  return <TextureStroke key={id} points={s.points} size={s.size} textureId={s.textureId} />;
+                })}
+                {stroking && liveStroke.current && liveStroke.current.kind === 'texture' && (
+                  <Shape
+                    ref={liveShapeRef}
+                    globalCompositeOperation="source-atop"
+                    listening={false}
+                    perfectDrawEnabled={false}
+                    sceneFunc={(ctx) => {
+                      const s = liveStroke.current;
+                      if (s && s.kind === 'texture') paintTextureStroke(ctx, s.points, s.size, s.textureId!);
+                    }}
                   />
                 )}
               </Layer>

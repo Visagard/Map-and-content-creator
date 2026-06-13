@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Trash2, RotateCcw, RotateCw } from 'lucide-react';
 import { useEditorStore, BRUSH_LIMITS } from '@/store/editorStore';
 import { useDocumentStore } from '@/store/documentStore';
 import { toolById } from '@/lib/tools';
+import { TEXTURES, getTextureCanvas, type TextureDef } from '@/lib/textures';
 import AssetPanel from './AssetPanel';
 
 function PanelSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -33,6 +35,47 @@ function BrushSettings() {
         className="range-ember mt-2"
       />
       <p className="mt-2 text-xs text-ink-400">Zkratky: [ zmenší · ] zvětší</p>
+    </PanelSection>
+  );
+}
+
+function TextureSwatch({ def, active, onClick }: { def: TextureDef; active: boolean; onClick: () => void }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(getTextureCanvas(def.id), 0, 0, c.width, c.height);
+  }, [def.id]);
+  return (
+    <button
+      onClick={onClick}
+      title={def.name}
+      className={`relative aspect-square overflow-hidden rounded-md ring-1 transition-shadow ${
+        active ? 'ring-2 ring-ember' : 'ring-white/10 hover:ring-white/30'
+      }`}
+    >
+      <canvas ref={ref} width={48} height={48} className="h-full w-full" />
+      <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-0.5 text-center text-[9px] text-stone-100">
+        {def.name}
+      </span>
+    </button>
+  );
+}
+
+function TextureSettings() {
+  const textureId = useEditorStore((s) => s.brush.textureId);
+  const setBrushTexture = useEditorStore((s) => s.setBrushTexture);
+  return (
+    <PanelSection title="Textura">
+      <div className="grid grid-cols-4 gap-1.5">
+        {TEXTURES.map((t) => (
+          <TextureSwatch key={t.id} def={t} active={textureId === t.id} onClick={() => setBrushTexture(t.id)} />
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-ink-400">Textura se nanáší jen na pevninu — do vody se nepřelije.</p>
     </PanelSection>
   );
 }
@@ -119,13 +162,8 @@ export default function ContextPanel() {
       </PanelSection>
 
       {showsBrush && <BrushSettings />}
+      {tool === 'textureBrush' && <TextureSettings />}
       {tool === 'select' && <SelectionProperties />}
-
-      {tool === 'textureBrush' && (
-        <PanelSection title="Textury">
-          <p className="text-xs text-ink-400">Knihovna textur přijde ve fázi maskování (F4).</p>
-        </PanelSection>
-      )}
 
       <PanelSection title={mode === 'world' ? 'World Mode' : 'Dungeon Mode'}>
         <p className="text-xs leading-relaxed text-ink-400">
