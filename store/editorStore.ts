@@ -14,6 +14,8 @@ interface EditorState {
   brush: { size: number; textureId: string | null };
   camera: Camera;
   selection: string[];
+  // Aktuálně vybraný prvek z katalogu k pokládání (Asset tool)
+  stampAssetId: string | null;
   // Efemérní pozice kurzoru ve world souřadnicích (pro StatusBar). Mimo historii.
   cursor: { x: number; y: number } | null;
 
@@ -27,6 +29,8 @@ interface EditorState {
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
   setCursor: (pos: { x: number; y: number } | null) => void;
+  /** Vybere prvek z katalogu a přepne na Asset tool. */
+  pickStampAsset: (assetId: string) => void;
 }
 
 const DEFAULT_TOOL: Record<EditorMode, ToolId> = {
@@ -44,6 +48,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   brush: { size: 64, textureId: null },
   camera: { x: 0, y: 0, scale: 1 },
   selection: [],
+  stampAssetId: null,
   cursor: null,
 
   setMode: (mode) =>
@@ -66,6 +71,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSelection: (ids) => set({ selection: ids }),
   clearSelection: () => set({ selection: [] }),
   setCursor: (pos) => set({ cursor: pos }),
+  pickStampAsset: (assetId) => set({ stampAssetId: assetId, tool: 'asset' }),
 }));
 
 export const BRUSH_LIMITS = { min: BRUSH_MIN, max: BRUSH_MAX };

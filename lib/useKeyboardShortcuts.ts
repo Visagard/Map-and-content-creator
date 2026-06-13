@@ -33,6 +33,30 @@ export function useKeyboardShortcuts() {
       }
       if (meta) return; // ostatní Ctrl/Cmd kombinace neřešíme
 
+      // Smazání vybraných prvků
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (editor.selection.length) {
+          e.preventDefault();
+          const { mode, selection } = editor;
+          doc.apply('Smazání prvku', (d) => {
+            const scene = mode === 'world' ? d.world : d.dungeon;
+            selection.forEach((id) => {
+              delete scene.assets[id];
+              const i = scene.assetOrder.indexOf(id);
+              if (i >= 0) scene.assetOrder.splice(i, 1);
+            });
+          });
+          editor.clearSelection();
+        }
+        return;
+      }
+
+      // Zrušení výběru
+      if (e.key === 'Escape') {
+        editor.clearSelection();
+        return;
+      }
+
       // Přepnutí módu World ⇄ Dungeon
       if (e.key === 'Tab') {
         e.preventDefault();

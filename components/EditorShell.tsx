@@ -5,9 +5,11 @@ import TopBar from './TopBar';
 import ToolRail from './ToolRail';
 import ContextPanel from './ContextPanel';
 import StatusBar from './StatusBar';
+import { useEffect } from 'react';
 import { useKeyboardShortcuts } from '@/lib/useKeyboardShortcuts';
 import { useAutosave } from '@/lib/useAutosave';
 import { useEditorStore } from '@/store/editorStore';
+import { useAssetLibStore } from '@/store/assetLibStore';
 
 // Konva potřebuje `window` → načítáme jen na klientu, nikdy při SSR/exportu.
 const MapCanvas = dynamic(() => import('./canvas/MapCanvas'), {
@@ -23,6 +25,11 @@ export default function EditorShell() {
   useKeyboardShortcuts();
   useAutosave();
   const mode = useEditorStore((s) => s.mode);
+
+  // Načti dříve nahrané vlastní assety z IndexedDB
+  useEffect(() => {
+    useAssetLibStore.getState().loadAll();
+  }, []);
 
   return (
     <div className="grid h-screen w-screen grid-rows-[auto_1fr_auto] bg-obsidian text-stone-200">

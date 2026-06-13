@@ -5,7 +5,9 @@ import Konva from 'konva';
 import { Stage, Layer, Line, Rect } from 'react-konva';
 import { useEditorStore } from '@/store/editorStore';
 import { useDocumentStore } from '@/store/documentStore';
+import { useAssetLibStore } from '@/store/assetLibStore';
 import BrushCursor from './BrushCursor';
+import AssetLayer from './AssetLayer';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const SCALE_MIN = 0.05;
@@ -86,8 +88,13 @@ export default function MapCanvas() {
   const brushSize = useEditorStore((s) => s.brush.size);
   const setCamera = useEditorStore((s) => s.setCamera);
   const setCursor = useEditorStore((s) => s.setCursor);
+  const stampAssetId = useEditorStore((s) => s.stampAssetId);
+  const clearSelection = useEditorStore((s) => s.clearSelection);
+  const importFile = useAssetLibStore((s) => s.importFile);
 
   const apply = useDocumentStore((s) => s.apply);
+  const worldAssetCount = useDocumentStore((s) => s.doc.world.assetOrder.length);
+  const dungeonAssetCount = useDocumentStore((s) => s.doc.dungeon.assetOrder.length);
   const waterColor = useDocumentStore((s) => s.doc.world.waterStyle.color);
   const landColor = useDocumentStore((s) => s.doc.world.landColor);
   const terrainStrokes = useDocumentStore((s) => s.doc.world.terrainStrokes);
@@ -170,6 +177,37 @@ export default function MapCanvas() {
     });
   };
 
+  const placeAsset = (assetId: string, x: number, y: number) => {
+    const id = crypto.randomUUID();
+    apply('Položení prvku', (d) => {
+      const scene = mode === 'world' ? d.world : d.dungeon;
+      scene.assets[id] = { id, assetId, x, y, rotation: 0, scale: 1, flipX: false };
+      scene.assetOrder.push(id);
+    });
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const wx = (e.clientX - rect.left - camera.x) / camera.scale;
+    const wy = (e.clientY - rect.top - camera.y) / camera.scale;
+
+    const catId = e.dataTransfer.getData('text/cartographer-asset');
+    if (catId) {
+      placeAsset(catId, wx, wy);
+      return;
+    }
+    // Soubory obrázků přetažené z disku → import do IndexedDB + položení
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+    let i = 0;
+    for (const f of files) {
+      const id = await importFile(f);
+      if (id) placeAsset(id, wx + i * 16, wy + i * 16);
+      i++;
+    }
+  };
+
   // --- pointer handlers ---
   const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const middle = e.evt.button === 1;
@@ -185,6 +223,15 @@ export default function MapCanvas() {
       return;
     }
     if (!left || !w) return;
+
+    if (tool === 'select') {
+      if (e.target === e.target.getStage()) clearSelection(); // klik do prázdna zruší výběr
+      return;
+    }
+    if (tool === 'asset') {
+      if (stampAssetId) placeAsset(stampAssetId, w.x, w.y);
+      return;
+    }
 
     if (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) {
       liveStroke.current = { kind: tool === 'erase' ? 'erase' : 'land', points: [w.x, w.y], size: brushSize };
@@ -249,12 +296,28 @@ export default function MapCanvas() {
 
   // --- odvozené ---
   const isDrawingTool = (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) || (mode === 'dungeon' && tool === 'room');
-  const cursorClass = isPanTool ? (dragging ? 'cursor-grabbing' : 'cursor-grab') : isDrawingTool ? 'cursor-crosshair' : 'cursor-default';
+  const cursorClass = isPanTool
+    ? dragging
+      ? 'cursor-grabbing'
+      : 'cursor-grab'
+    : tool === 'asset' && stampAssetId
+      ? 'cursor-copy'
+      : isDrawingTool
+        ? 'cursor-crosshair'
+        : 'cursor-default';
   const gridColor = mode === 'world' ? 'rgba(180,210,230,0.06)' : 'rgba(150,170,210,0.10)';
-  const sceneEmpty = mode === 'world' ? terrainOrder.length === 0 : roomOrder.length === 0;
+  const sceneEmpty =
+    mode === 'world'
+      ? terrainOrder.length === 0 && worldAssetCount === 0
+      : roomOrder.length === 0 && dungeonAssetCount === 0;
 
   return (
-    <div ref={containerRef} className={`absolute inset-0 touch-none ${cursorClass}`}>
+    <div
+      ref={containerRef}
+      className={`absolute inset-0 touch-none ${cursorClass}`}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
       {size.width > 0 && size.height > 0 && (
         <Stage
           ref={stageRef}
@@ -350,6 +413,9 @@ export default function MapCanvas() {
           )}
 
           <GridLayer view={view} baseCell={mode === 'dungeon' ? gridCell : 256} scale={camera.scale} color={gridColor} />
+
+          {/* Položené prvky (sdílené bitmapy, výběr/transform v Select toolu) */}
+          <AssetLayer mode={mode} />
 
           {/* Overlay: počátek + ghost štětce */}
           <Layer listening={false}>
