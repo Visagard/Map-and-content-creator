@@ -8,15 +8,21 @@ import { useDocumentStore } from '@/store/documentStore';
 import { useAssetLibStore } from '@/store/assetLibStore';
 import BrushCursor from './BrushCursor';
 import AssetLayer from './AssetLayer';
+import LabelLayer from './LabelLayer';
 import TextureStroke, { paintTextureStroke } from './TextureStroke';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const SCALE_MIN = 0.05;
 const SCALE_MAX = 16;
 
-// Pobřeží = tmavší „hloubkový" prstenec vody kolem pevniny (vzhled à la Inkarnate)
-const COAST = 18;
-const COAST_COLOR = 'rgba(8,26,40,0.55)';
+// Pobřeží = soustředné hloubkové pásy vody kolem pevniny (mělčina → hloubka),
+// vzhled à la Inkarnate. Kreslí se od nejširšího (nejtmavšího) po nejužší (mělčina).
+const COAST_BANDS = [
+  { w: 46, color: 'rgba(6,20,32,0.55)' },
+  { w: 26, color: 'rgba(22,58,82,0.5)' },
+  { w: 11, color: 'rgba(74,128,150,0.5)' },
+];
+const COAST_MAX = 46;
 // Dungeon styl (Dungeon Scrawl): světlá podlaha, tučné tmavé zdi
 const FLOOR = '#c7c1b0';
 const WALL = '#15171c';
@@ -106,6 +112,7 @@ export default function MapCanvas() {
   const setCursor = useEditorStore((s) => s.setCursor);
   const stampAssetId = useEditorStore((s) => s.stampAssetId);
   const clearSelection = useEditorStore((s) => s.clearSelection);
+  const setSelection = useEditorStore((s) => s.setSelection);
   const importFile = useAssetLibStore((s) => s.importFile);
 
   const apply = useDocumentStore((s) => s.apply);
@@ -254,6 +261,18 @@ export default function MapCanvas() {
       if (stampAssetId) placeAsset(stampAssetId, w.x, w.y);
       return;
     }
+    if (mode === 'world' && tool === 'label') {
+      const text = window.prompt('Text popisku:', 'Název');
+      if (text) {
+        const id = crypto.randomUUID();
+        apply('Popisek', (d) => {
+          d.world.labels[id] = { id, x: w.x, y: w.y, text, fontSize: 48, color: '#2a2018' };
+          d.world.labelOrder.push(id);
+        });
+        setSelection([id]);
+      }
+      return;
+    }
 
     if (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) {
       liveStroke.current = { kind: tool === 'erase' ? 'erase' : 'land', points: [w.x, w.y], size: brushSize };
@@ -345,9 +364,11 @@ export default function MapCanvas() {
       : 'cursor-grab'
     : tool === 'asset' && stampAssetId
       ? 'cursor-copy'
-      : isDrawingTool
-        ? 'cursor-crosshair'
-        : 'cursor-default';
+      : tool === 'label'
+        ? 'cursor-text'
+        : isDrawingTool
+          ? 'cursor-crosshair'
+          : 'cursor-default';
   const gridColor = mode === 'world' ? 'rgba(180,210,230,0.06)' : 'rgba(20,24,32,0.45)';
   const sceneEmpty =
     mode === 'world'
@@ -383,20 +404,38 @@ export default function MapCanvas() {
               <Layer listening={false}>
                 <Rect x={view.left} y={view.top} width={view.right - view.left} height={view.bottom - view.top} fill={waterColor} perfectDrawEnabled={false} />
               </Layer>
-              {/* Pobřeží — širší tmavý obrys pevniny pod terénem → prstenec hlubší vody */}
+              {/* Pobřeží — soustředné hloubkové pásy pod terénem (mělčina → hloubka) */}
               <Layer listening={false}>
+                {COAST_BANDS.map((band, bi) =>
+                  terrainOrder.map((id) => {
+                    const s = terrainStrokes[id];
+                    if (!s || s.kind !== 'land') return null;
+                    return (
+                      <Line
+                        key={`b${bi}-${id}`}
+                        points={s.points}
+                        stroke={band.color}
+                        strokeWidth={s.size + band.w * 2}
+                        lineCap="round"
+                        lineJoin="round"
+                        listening={false}
+                        perfectDrawEnabled={false}
+                      />
+                    );
+                  }),
+                )}
                 {terrainOrder.map((id) => {
                   const s = terrainStrokes[id];
-                  if (!s || s.kind === 'texture') return null;
+                  if (!s || s.kind !== 'erase') return null;
                   return (
                     <Line
-                      key={id}
+                      key={`be-${id}`}
                       points={s.points}
-                      stroke={COAST_COLOR}
-                      strokeWidth={s.size + COAST * 2}
+                      stroke="#000"
+                      strokeWidth={s.size + COAST_MAX * 2}
                       lineCap="round"
                       lineJoin="round"
-                      globalCompositeOperation={s.kind === 'erase' ? 'destination-out' : undefined}
+                      globalCompositeOperation="destination-out"
                       listening={false}
                       perfectDrawEnabled={false}
                     />
@@ -527,6 +566,9 @@ export default function MapCanvas() {
 
           {/* Položené prvky (sdílené bitmapy, výběr/transform v Select toolu) */}
           <AssetLayer mode={mode} />
+
+          {/* Popisky (jen World) */}
+          {mode === 'world' && <LabelLayer />}
 
           {/* Overlay: počátek + ghost štětce */}
           <Layer listening={false}>

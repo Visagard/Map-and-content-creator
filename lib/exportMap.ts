@@ -9,11 +9,37 @@ import { getTextureCanvas } from './textures';
 import { useAssetLibStore } from '@/store/assetLibStore';
 
 const ASSET_BASE = 80;
-const COAST = 18;
-const COAST_COLOR = 'rgba(8,26,40,0.55)';
+const COAST_BANDS = [
+  { w: 46, color: 'rgba(6,20,32,0.55)' },
+  { w: 26, color: 'rgba(22,58,82,0.5)' },
+  { w: 11, color: 'rgba(74,128,150,0.5)' },
+];
+const COAST_MAX = 46;
 const FLOOR = '#c7c1b0';
 const WALL = '#15171c';
 const WALL_W = 5;
+
+let paperGrain: HTMLCanvasElement | null = null;
+function getPaperGrain(): HTMLCanvasElement {
+  if (paperGrain) return paperGrain;
+  const px = 256;
+  const c = document.createElement('canvas');
+  c.width = px;
+  c.height = px;
+  const g = c.getContext('2d')!;
+  let seed = 99173;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  for (let i = 0; i < 9000; i++) {
+    const dark = rnd() < 0.5;
+    g.fillStyle = dark ? `rgba(40,30,18,${0.05 + rnd() * 0.1})` : `rgba(255,245,220,${0.04 + rnd() * 0.08})`;
+    g.fillRect((rnd() * px) | 0, (rnd() * px) | 0, 1, 1);
+  }
+  paperGrain = c;
+  return c;
+}
 
 function resolveImage(assetId: string): CanvasImageSource | null {
   if (assetId.startsWith('usr:')) return useAssetLibStore.getState().images[assetId] ?? null;
@@ -68,6 +94,13 @@ export function computeBounds(doc: MapDocument, mode: EditorMode): Bounds | null
       for (let i = 0; i < s.points.length; i += 2) ext(s.points[i], s.points[i + 1], r);
     }
     extAsset(doc.world);
+    for (const id of doc.world.labelOrder) {
+      const l = doc.world.labels[id];
+      if (!l) continue;
+      const w2 = l.text.length * l.fontSize * 0.55;
+      ext(l.x, l.y);
+      ext(l.x + w2, l.y + l.fontSize);
+    }
   } else {
     for (const id of doc.dungeon.roomOrder) {
       const r = doc.dungeon.rooms[id];
@@ -85,6 +118,17 @@ export function computeBounds(doc: MapDocument, mode: EditorMode): Bounds | null
   }
 
   return any ? { minX, minY, maxX, maxY } : null;
+}
+
+function drawFrame(ctx: CanvasRenderingContext2D, minX: number, minY: number, W: number, H: number) {
+  const m = Math.min(W, H) * 0.022;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(28,20,12,0.85)';
+  ctx.lineWidth = Math.min(W, H) * 0.006;
+  ctx.strokeRect(minX + m, minY + m, W - 2 * m, H - 2 * m);
+  ctx.lineWidth = Math.min(W, H) * 0.002;
+  ctx.strokeRect(minX + m * 1.7, minY + m * 1.7, W - 2 * m * 1.7, H - 2 * m * 1.7);
+  ctx.restore();
 }
 
 function strokePath(ctx: CanvasRenderingContext2D, points: number[], width: number) {
@@ -180,15 +224,23 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     const cxst = coast.getContext('2d');
     if (cxst) {
       applyWorldTransform(cxst);
+      for (const band of COAST_BANDS) {
+        cxst.strokeStyle = band.color;
+        for (const id of doc.world.terrainOrder) {
+          const s = doc.world.terrainStrokes[id];
+          if (!s || s.kind !== 'land') continue;
+          strokePath(cxst, s.points, s.size + band.w * 2);
+        }
+      }
+      cxst.save();
+      cxst.globalCompositeOperation = 'destination-out';
+      cxst.strokeStyle = '#000';
       for (const id of doc.world.terrainOrder) {
         const s = doc.world.terrainStrokes[id];
-        if (!s || s.kind === 'texture') continue;
-        cxst.save();
-        if (s.kind === 'erase') cxst.globalCompositeOperation = 'destination-out';
-        cxst.strokeStyle = COAST_COLOR;
-        strokePath(cxst, s.points, s.size + COAST * 2);
-        cxst.restore();
+        if (!s || s.kind !== 'erase') continue;
+        strokePath(cxst, s.points, s.size + COAST_MAX * 2);
       }
+      cxst.restore();
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.drawImage(coast, 0, 0);
@@ -233,6 +285,23 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     ctx.drawImage(tc, 0, 0);
     ctx.restore();
     drawAssets(ctx, doc.world);
+    // Popisky
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.lineJoin = 'round';
+    for (const id of doc.world.labelOrder) {
+      const l = doc.world.labels[id];
+      if (!l) continue;
+      ctx.font = `bold ${l.fontSize}px Georgia, "Times New Roman", serif`;
+      ctx.strokeStyle = '#f6f0e2';
+      ctx.lineWidth = Math.max(1, l.fontSize * 0.14);
+      ctx.fillStyle = l.color;
+      l.text.split('\n').forEach((ln, i) => {
+        const ly = l.y + i * l.fontSize;
+        ctx.strokeText(ln, l.x, ly);
+        ctx.fillText(ln, l.x, ly);
+      });
+    }
     // Jemná vinětace → „dokončený" vzhled mapy
     if (opts.background !== 'transparent') {
       const ccx = minX + W / 2;
@@ -242,6 +311,17 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
       vg.addColorStop(1, 'rgba(0,0,0,0.26)');
       ctx.fillStyle = vg;
       ctx.fillRect(minX, minY, W, H);
+      // Pergamenové zrno (v device prostoru → jemné nezávisle na zoomu)
+      const pat = ctx.createPattern(getPaperGrain(), 'repeat');
+      if (pat) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = pat;
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.restore();
+      }
+      drawFrame(ctx, minX, minY, W, H);
     }
   } else {
     if (opts.background !== 'transparent') {
@@ -295,6 +375,7 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
       ctx.strokeRect(r.x, r.y, r.width, r.height);
     }
     drawAssets(ctx, doc.dungeon);
+    if (opts.background !== 'transparent') drawFrame(ctx, minX, minY, W, H);
   }
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, opts.mime, opts.quality ?? 0.92));

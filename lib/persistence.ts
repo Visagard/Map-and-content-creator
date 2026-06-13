@@ -1,6 +1,6 @@
 // Lokální perzistence dokumentu do IndexedDB (localForage). Žádný cloud.
 import localforage from 'localforage';
-import type { MapDocument } from './types';
+import { normalizeDocument, type MapDocument } from './types';
 
 const store = localforage.createInstance({
   name: 'cartographer',
@@ -12,7 +12,8 @@ const CURRENT_KEY = 'current';
 
 export async function loadCurrentDocument(): Promise<MapDocument | null> {
   try {
-    return (await store.getItem<MapDocument>(CURRENT_KEY)) ?? null;
+    const raw = await store.getItem<Partial<MapDocument>>(CURRENT_KEY);
+    return raw ? normalizeDocument(raw) : null;
   } catch {
     return null;
   }

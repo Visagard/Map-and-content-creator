@@ -11,7 +11,8 @@ export type ToolId =
   | 'erase'
   | 'room'
   | 'corridor'
-  | 'asset';
+  | 'asset'
+  | 'label';
 
 // ---- World Mode -------------------------------------------------------------
 
@@ -29,6 +30,15 @@ export type TerrainStroke =
       softness?: number; // měkkost okraje (0–1) pro prolínání biomů, default 0
     };
 
+export interface TextLabel {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  color: string;
+}
+
 export interface WorldScene {
   waterStyle: { color: string; textureId?: string };
   landColor: string;
@@ -36,6 +46,8 @@ export interface WorldScene {
   terrainOrder: string[];
   assets: Record<string, PlacedAsset>;
   assetOrder: string[];
+  labels: Record<string, TextLabel>;
+  labelOrder: string[];
 }
 
 // ---- Dungeon Mode -----------------------------------------------------------
@@ -90,6 +102,20 @@ export interface MapDocument {
 
 export const SCHEMA_VERSION = 1;
 
+/** Doplní chybějící pole u dokumentu načteného ze staršího schématu (např. bez labels). */
+export function normalizeDocument(raw: Partial<MapDocument> | null | undefined): MapDocument {
+  const base = createEmptyDocument(raw?.id ?? crypto.randomUUID(), raw?.name);
+  return {
+    ...base,
+    ...raw,
+    id: raw?.id ?? base.id,
+    name: raw?.name ?? base.name,
+    schemaVersion: SCHEMA_VERSION,
+    world: { ...base.world, ...(raw?.world ?? {}) },
+    dungeon: { ...base.dungeon, ...(raw?.dungeon ?? {}) },
+  };
+}
+
 export function createEmptyDocument(id: string, name = 'Nová mapa'): MapDocument {
   return {
     id,
@@ -102,6 +128,8 @@ export function createEmptyDocument(id: string, name = 'Nová mapa'): MapDocumen
       terrainOrder: [],
       assets: {},
       assetOrder: [],
+      labels: {},
+      labelOrder: [],
     },
     dungeon: {
       grid: { cellSize: 48, visible: true },

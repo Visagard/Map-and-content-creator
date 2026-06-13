@@ -7,6 +7,7 @@ import {
   Square,
   Spline,
   Shapes,
+  Type,
   type LucideIcon,
 } from 'lucide-react';
 import type { EditorMode, ToolId } from './types';
@@ -76,6 +77,14 @@ export const TOOLS: ToolDef[] = [
     shortcut: 'A',
     icon: Shapes,
     modes: ['world', 'dungeon'],
+  },
+  {
+    id: 'label',
+    label: 'Popisek',
+    hint: 'Přidej text/název na mapu (dvojklik upraví, táhni přesune)',
+    shortcut: 'L',
+    icon: Type,
+    modes: ['world'],
   },
   {
     id: 'pan',

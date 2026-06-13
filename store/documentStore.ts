@@ -136,6 +136,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         delete scene.assets[id];
         const i = scene.assetOrder.indexOf(id);
         if (i >= 0) scene.assetOrder.splice(i, 1);
+        // popisky (jen World)
+        if (mode === 'world') {
+          delete d.world.labels[id];
+          const li = d.world.labelOrder.indexOf(id);
+          if (li >= 0) d.world.labelOrder.splice(li, 1);
+        }
       });
     });
   },

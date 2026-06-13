@@ -163,12 +163,69 @@ function DungeonGenerator() {
   );
 }
 
+function LabelEditor({ id }: { id: string }) {
+  const apply = useDocumentStore((s) => s.apply);
+  const label = useDocumentStore((s) => s.doc.world.labels[id]);
+  const deleteAssets = useDocumentStore((s) => s.deleteAssets);
+  const clearSelection = useEditorStore((s) => s.clearSelection);
+  const [text, setText] = useState(label?.text ?? '');
+  useEffect(() => {
+    setText(label?.text ?? '');
+  }, [id, label?.text]);
+  if (!label) return null;
+
+  const commitText = () => {
+    if (text !== label.text) apply('Text popisku', (d) => { const l = d.world.labels[id]; if (l) l.text = text; });
+  };
+  const setSize = (n: number) => apply('Velikost popisku', (d) => { const l = d.world.labels[id]; if (l) l.fontSize = n; });
+  const setColor = (c: string) => apply('Barva popisku', (d) => { const l = d.world.labels[id]; if (l) l.color = c; });
+
+  return (
+    <PanelSection title="Popisek">
+      <textarea
+        rows={2}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commitText}
+        className="w-full rounded-md bg-ink-800 p-2 text-sm text-stone-100 outline-none ring-1 ring-white/5 focus:ring-ember/40"
+      />
+      <div className="mt-3 flex items-center justify-between text-sm">
+        <span className="text-stone-400">Velikost</span>
+        <span className="tabular-nums text-stone-200">{Math.round(label.fontSize)}</span>
+      </div>
+      <input
+        type="range"
+        min={12}
+        max={180}
+        value={label.fontSize}
+        onChange={(e) => setSize(Number(e.target.value))}
+        className="range-ember mt-1.5"
+      />
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-sm text-stone-400">Barva</span>
+        <input type="color" value={label.color} onChange={(e) => setColor(e.target.value)} className="h-7 w-10 cursor-pointer rounded bg-transparent" />
+      </div>
+      <button
+        onClick={() => {
+          deleteAssets('world', [id]);
+          clearSelection();
+        }}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md bg-red-900/40 py-2 text-sm text-red-300 hover:bg-red-900/60"
+      >
+        <Trash2 size={15} /> Smazat popisek
+      </button>
+      <p className="mt-2 text-xs text-ink-400">Dvojklik na popisek na plátně upraví text, tažením přesuneš.</p>
+    </PanelSection>
+  );
+}
+
 function SelectionProperties() {
   const mode = useEditorStore((s) => s.mode);
   const selection = useEditorStore((s) => s.selection);
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const apply = useDocumentStore((s) => s.apply);
   const deleteAssets = useDocumentStore((s) => s.deleteAssets);
+  const isLabel = useDocumentStore((s) => mode === 'world' && selection.length === 1 && !!s.doc.world.labels[selection[0]]);
 
   if (selection.length === 0) {
     return (
@@ -177,6 +234,8 @@ function SelectionProperties() {
       </PanelSection>
     );
   }
+
+  if (isLabel) return <LabelEditor id={selection[0]} />;
 
   const rotate = (delta: number) =>
     apply('Otočení prvku', (d) => {
@@ -240,7 +299,7 @@ export default function ContextPanel() {
 
       {showsBrush && <BrushSettings />}
       {tool === 'textureBrush' && <TextureSettings />}
-      {tool === 'select' && <SelectionProperties />}
+      {(tool === 'select' || tool === 'label') && <SelectionProperties />}
       {mode === 'dungeon' && <DungeonGenerator />}
 
       <PanelSection title={mode === 'world' ? 'World Mode' : 'Dungeon Mode'}>
