@@ -6,6 +6,7 @@ import { catalogById } from './assetCatalog';
 import { getEmojiCanvas } from './assetImages';
 import { getArtCanvas } from './artAssets';
 import { getTextureCanvas } from './textures';
+import { computeDungeonGeometry, drawDungeon } from './dungeonRender';
 import { useAssetLibStore } from '@/store/assetLibStore';
 
 const ASSET_BASE = 80;
@@ -15,9 +16,6 @@ const COAST_BANDS = [
   { w: 11, color: 'rgba(74,128,150,0.5)' },
 ];
 const COAST_MAX = 46;
-const FLOOR = '#c7c1b0';
-const WALL = '#15171c';
-const WALL_W = 5;
 
 let paperGrain: HTMLCanvasElement | null = null;
 function getPaperGrain(): HTMLCanvasElement {
@@ -255,28 +253,41 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     tx.imageSmoothingEnabled = true;
     tx.imageSmoothingQuality = 'high';
     applyWorldTransform(tx);
+    // průchod 1: pevnina + mazání (alfa maska)
     for (const id of doc.world.terrainOrder) {
       const s = doc.world.terrainStrokes[id];
-      if (!s) continue;
+      if (!s || s.kind === 'texture') continue;
       tx.save();
-      if (s.kind === 'texture') {
-        const pat = tx.createPattern(getTextureCanvas(s.textureId), 'repeat');
-        if (pat) {
-          tx.globalCompositeOperation = 'source-atop';
-          tx.globalAlpha = s.opacity ?? 1;
-          const soft = s.softness ?? 0;
-          if (soft > 0) {
-            const blur = soft * s.size * 0.45 * ratio;
-            if (blur > 0.5) tx.filter = `blur(${blur}px)`;
-          }
-          tx.strokeStyle = pat;
-          strokePath(tx, s.points, s.size);
-        }
-      } else {
-        if (s.kind === 'erase') tx.globalCompositeOperation = 'destination-out';
-        tx.strokeStyle = s.kind === 'erase' ? '#000' : doc.world.landColor;
-        strokePath(tx, s.points, s.size);
+      if (s.kind === 'erase') tx.globalCompositeOperation = 'destination-out';
+      tx.strokeStyle = s.kind === 'erase' ? '#000' : doc.world.landColor;
+      strokePath(tx, s.points, s.size);
+      tx.restore();
+    }
+    // podklad pevniny (source-atop → pokryje celou souš)
+    const basePat = tx.createPattern(getTextureCanvas(doc.world.baseTextureId), 'repeat');
+    if (basePat) {
+      tx.save();
+      tx.globalCompositeOperation = 'source-atop';
+      tx.fillStyle = basePat;
+      tx.fillRect(minX, minY, W, H);
+      tx.restore();
+    }
+    // průchod 2: textury (source-atop, krytí + měkkost)
+    for (const id of doc.world.terrainOrder) {
+      const s = doc.world.terrainStrokes[id];
+      if (!s || s.kind !== 'texture') continue;
+      const pat = tx.createPattern(getTextureCanvas(s.textureId), 'repeat');
+      if (!pat) continue;
+      tx.save();
+      tx.globalCompositeOperation = 'source-atop';
+      tx.globalAlpha = s.opacity ?? 1;
+      const soft = s.softness ?? 0;
+      if (soft > 0) {
+        const blur = soft * s.size * 0.45 * ratio;
+        if (blur > 0.5) tx.filter = `blur(${blur}px)`;
       }
+      tx.strokeStyle = pat;
+      strokePath(tx, s.points, s.size);
       tx.restore();
     }
     // Slož terén nad vodu (1:1 kopie pixelů)
@@ -328,52 +339,9 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
       ctx.fillStyle = '#0e0f13';
       ctx.fillRect(minX, minY, W, H);
     }
-    // Podlaha = chodby + místnosti (světlý kámen, splývají)
-    ctx.fillStyle = FLOOR;
-    for (const id of doc.dungeon.corridorOrder) {
-      const c = doc.dungeon.corridors[id];
-      if (!c) continue;
-      ctx.strokeStyle = FLOOR;
-      strokePath(ctx, c.points, c.width);
-    }
-    for (const id of doc.dungeon.roomOrder) {
-      const r = doc.dungeon.rooms[id];
-      if (!r) continue;
-      ctx.fillRect(r.x, r.y, r.width, r.height);
-    }
-    // Mřížka jen na podlaze (ořez na místnosti), pod zdmi
-    if (opts.grid) {
-      const cell = doc.dungeon.grid.cellSize;
-      ctx.save();
-      ctx.beginPath();
-      for (const id of doc.dungeon.roomOrder) {
-        const r = doc.dungeon.rooms[id];
-        if (r) ctx.rect(r.x, r.y, r.width, r.height);
-      }
-      ctx.clip();
-      ctx.strokeStyle = 'rgba(20,24,32,0.4)';
-      ctx.lineWidth = 1 / ratio;
-      ctx.beginPath();
-      for (let x = Math.ceil(minX / cell) * cell; x <= minX + W; x += cell) {
-        ctx.moveTo(x, minY);
-        ctx.lineTo(x, minY + H);
-      }
-      for (let y = Math.ceil(minY / cell) * cell; y <= minY + H; y += cell) {
-        ctx.moveTo(minX, y);
-        ctx.lineTo(minX + W, y);
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
-    // Obvodové zdi místností (tučné tmavé) — Dungeon Scrawl styl
-    ctx.lineJoin = 'miter';
-    ctx.lineWidth = WALL_W;
-    ctx.strokeStyle = WALL;
-    for (const id of doc.dungeon.roomOrder) {
-      const r = doc.dungeon.rooms[id];
-      if (!r) continue;
-      ctx.strokeRect(r.x, r.y, r.width, r.height);
-    }
+    // Sloučená podlaha + jeden obrys zdí (Dungeon Scrawl styl)
+    const geom = computeDungeonGeometry(doc.dungeon, doc.dungeon.grid.cellSize);
+    drawDungeon(ctx, geom, { grid: !!opts.grid, floorTexture: true });
     drawAssets(ctx, doc.dungeon);
     if (opts.background !== 'transparent') drawFrame(ctx, minX, minY, W, H);
   }

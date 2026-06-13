@@ -9,7 +9,8 @@ import { useAssetLibStore } from '@/store/assetLibStore';
 import BrushCursor from './BrushCursor';
 import AssetLayer from './AssetLayer';
 import LabelLayer from './LabelLayer';
-import TextureStroke, { paintTextureStroke } from './TextureStroke';
+import TextureStroke, { paintTextureStroke, BaseGround } from './TextureStroke';
+import { computeDungeonGeometry, drawDungeon } from '@/lib/dungeonRender';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const SCALE_MIN = 0.05;
@@ -23,10 +24,6 @@ const COAST_BANDS = [
   { w: 11, color: 'rgba(74,128,150,0.5)' },
 ];
 const COAST_MAX = 46;
-// Dungeon styl (Dungeon Scrawl): světlá podlaha, tučné tmavé zdi
-const FLOOR = '#c7c1b0';
-const WALL = '#15171c';
-const WALL_W = 5;
 
 /** Drží-li uživatel mezerník (dočasný pan). */
 function useSpaceHeld() {
@@ -120,6 +117,7 @@ export default function MapCanvas() {
   const dungeonAssetCount = useDocumentStore((s) => s.doc.dungeon.assetOrder.length);
   const waterColor = useDocumentStore((s) => s.doc.world.waterStyle.color);
   const landColor = useDocumentStore((s) => s.doc.world.landColor);
+  const baseTextureId = useDocumentStore((s) => s.doc.world.baseTextureId);
   const terrainStrokes = useDocumentStore((s) => s.doc.world.terrainStrokes);
   const terrainOrder = useDocumentStore((s) => s.doc.world.terrainOrder);
   const gridCell = useDocumentStore((s) => s.doc.dungeon.grid.cellSize);
@@ -156,6 +154,11 @@ export default function MapCanvas() {
       bottom: (size.height - camera.y) / camera.scale,
     }),
     [camera.x, camera.y, camera.scale, size.width, size.height],
+  );
+
+  const dungeonGeom = useMemo(
+    () => computeDungeonGeometry({ rooms, roomOrder, corridors, corridorOrder }, gridCell),
+    [rooms, roomOrder, corridors, corridorOrder, gridCell],
   );
 
   const toWorld = () => {
@@ -478,6 +481,9 @@ export default function MapCanvas() {
                   />
                 )}
 
+                {/* podklad pevniny — souš se vždy texturuje (source-atop) */}
+                <BaseGround view={view} textureId={baseTextureId} />
+
                 {/* průchod 2: textury (source-atop) */}
                 {terrainOrder.map((id) => {
                   const s = terrainStrokes[id];
@@ -509,49 +515,26 @@ export default function MapCanvas() {
               </Layer>
             </>
           ) : (
-            // Dungeon — chodby (pod místnostmi) + místnosti (floor + zeď) + živý náhled
+            // Dungeon — sloučená podlaha + jeden obrys zdí (Dungeon Scrawl styl) + živý náhled
             <Layer listening={false}>
-              {corridorOrder.map((id) => {
-                const c = corridors[id];
-                if (!c) return null;
-                return (
-                  <Line
-                    key={id}
-                    points={c.points}
-                    stroke={FLOOR}
-                    strokeWidth={c.width}
-                    lineCap="round"
-                    lineJoin="round"
-                    listening={false}
-                    perfectDrawEnabled={false}
-                  />
-                );
-              })}
-              {roomOrder.map((id) => {
-                const r = rooms[id];
-                if (!r) return null;
-                return (
-                  <Rect
-                    key={id}
-                    x={r.x}
-                    y={r.y}
-                    width={r.width}
-                    height={r.height}
-                    fill={FLOOR}
-                    stroke={WALL}
-                    strokeWidth={WALL_W}
-                    listening={false}
-                    perfectDrawEnabled={false}
-                  />
-                );
-              })}
+              <Shape
+                sceneFunc={(ctx) =>
+                  drawDungeon(
+                    (ctx as unknown as { _context: CanvasRenderingContext2D })._context,
+                    dungeonGeom,
+                    { grid: true },
+                  )
+                }
+                listening={false}
+                perfectDrawEnabled={false}
+              />
               {roomDraft && (roomDraft.w > 0 || roomDraft.h > 0) && (
                 <Rect
                   x={roomDraft.x}
                   y={roomDraft.y}
                   width={roomDraft.w}
                   height={roomDraft.h}
-                  fill="rgba(201,145,63,0.18)"
+                  fill="rgba(201,145,63,0.2)"
                   stroke="#c9913f"
                   strokeWidth={2 / camera.scale}
                   dash={[8 / camera.scale, 4 / camera.scale]}
@@ -562,7 +545,7 @@ export default function MapCanvas() {
             </Layer>
           )}
 
-          <GridLayer view={view} baseCell={mode === 'dungeon' ? gridCell : 256} scale={camera.scale} color={gridColor} />
+          {mode === 'world' && <GridLayer view={view} baseCell={256} scale={camera.scale} color={gridColor} />}
 
           {/* Položené prvky (sdílené bitmapy, výběr/transform v Select toolu) */}
           <AssetLayer mode={mode} />

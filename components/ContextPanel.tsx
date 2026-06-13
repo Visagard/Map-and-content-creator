@@ -66,6 +66,22 @@ function TextureSwatch({ def, active, onClick }: { def: TextureDef; active: bool
   );
 }
 
+function BaseGroundSettings() {
+  const baseTextureId = useDocumentStore((s) => s.doc.world.baseTextureId);
+  const apply = useDocumentStore((s) => s.apply);
+  const set = (id: string) => apply('Podklad pevniny', (d) => { d.world.baseTextureId = id; });
+  return (
+    <PanelSection title="Podklad pevniny">
+      <div className="grid grid-cols-4 gap-1.5">
+        {TEXTURES.map((t) => (
+          <TextureSwatch key={t.id} def={t} active={baseTextureId === t.id} onClick={() => set(t.id)} />
+        ))}
+      </div>
+      <p className="mt-2 text-xs text-ink-400">Výchozí textura celé souše. Štětcem Textura pak maluješ varianty navrch.</p>
+    </PanelSection>
+  );
+}
+
 function TextureSettings() {
   const textureId = useEditorStore((s) => s.brush.textureId);
   const setBrushTexture = useEditorStore((s) => s.setBrushTexture);
@@ -298,6 +314,7 @@ export default function ContextPanel() {
       </PanelSection>
 
       {showsBrush && <BrushSettings />}
+      {tool === 'landBrush' && <BaseGroundSettings />}
       {tool === 'textureBrush' && <TextureSettings />}
       {(tool === 'select' || tool === 'label') && <SelectionProperties />}
       {mode === 'dungeon' && <DungeonGenerator />}

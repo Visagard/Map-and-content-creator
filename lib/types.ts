@@ -42,6 +42,7 @@ export interface TextLabel {
 export interface WorldScene {
   waterStyle: { color: string; textureId?: string };
   landColor: string;
+  baseTextureId: string;
   terrainStrokes: Record<string, TerrainStroke>;
   terrainOrder: string[];
   assets: Record<string, PlacedAsset>;
@@ -124,6 +125,7 @@ export function createEmptyDocument(id: string, name = 'Nová mapa'): MapDocumen
     world: {
       waterStyle: { color: '#16384f' },
       landColor: '#cdb386',
+      baseTextureId: 'grass',
       terrainStrokes: {},
       terrainOrder: [],
       assets: {},

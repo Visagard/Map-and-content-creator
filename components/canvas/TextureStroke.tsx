@@ -46,6 +46,35 @@ export function paintTextureStroke(
   ctx.restore();
 }
 
+/** Vyplní obdélník texturou (pattern v world souřadnicích). Pro podklad pevniny
+ *  se source-atop → textura pokryje celou souš, ne vodu. */
+export function paintTextureFill(
+  context: Konva.Context,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  textureId: string,
+): void {
+  const ctx = (context as unknown as { _context: CanvasRenderingContext2D })._context;
+  const pattern = ctx.createPattern(getTextureCanvas(textureId), 'repeat');
+  if (!pattern) return;
+  ctx.fillStyle = pattern;
+  ctx.fillRect(x, y, w, h);
+}
+
+/** Podklad pevniny — souš se vždy texturuje (jako v Inkarnate). */
+export function BaseGround({ view, textureId }: { view: { left: number; top: number; right: number; bottom: number }; textureId: string }) {
+  return (
+    <Shape
+      globalCompositeOperation="source-atop"
+      listening={false}
+      perfectDrawEnabled={false}
+      sceneFunc={(ctx) => paintTextureFill(ctx, view.left, view.top, view.right - view.left, view.bottom - view.top, textureId)}
+    />
+  );
+}
+
 export default function TextureStroke({
   points,
   size,

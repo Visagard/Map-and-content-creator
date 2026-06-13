@@ -77,6 +77,7 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F6** — Profesionální grafika: ~38 vektorových assetů kreslených v kódu (stínované „stampy" jako Inkarnate/Dungeon Scrawl), malované textury (měkké skvrny + šum), pobřeží (hloubkový stín vody) a Dungeon-Scrawl vzhled (světlá podlaha, tučné zdi, mřížka na podlaze)
 - [x] **F7** — Inkarnate workflow: texturový štětec s krytím a měkkostí okraje (plynulé prolínání biomů), ostřejší a detailnější vykreslení (assety/emoji ve vyšším rozlišení, vyhlazování), jemná vinětace v exportu
 - [x] **F8** — Kartografická vrstva: soustředné vodní hloubkové pásy (mělčina→hloubka), pergamenové zrno + rámeček mapy, textové popisky (serif font, halo, editace), +21 nových kreslených assetů (vesnice, maják, loď, menhiry, vodopád, útes, trůn, fontána, kotlík, sarkofág, pavučina…)
+- [x] **F9** — Úroveň Dungeon Scrawl / Inkarnate: dungeon má sloučenou podlahu s jediným obrysem zdí (marching-squares přes rastr buněk) + vnitřní stín zdí + kamennou texturu + mřížku jen na podlaze; svět má vždy plně texturovaný podklad pevniny (volitelný biom)
 
 ## Ovládání
 
