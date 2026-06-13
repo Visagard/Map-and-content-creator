@@ -74,6 +74,7 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F3.5** — Knihovna prvků: ~290 vestavěných prvků (8 kategorií) s vyhledáváním podle názvu, pokládání na mapu, výběr/posun/otáčení/zvětšení/mazání, drag-and-drop import vlastních obrázků z disku do IndexedDB, sdílené bitmapy pro výkon
 - [x] **F4** — Landmass Masking (`globalCompositeOperation: source-atop`) + 12 procedurálních textur; textura drží jen na pevnině
 - [x] **F5** — Procedurální generátor dungeonu (MST místnosti+chodby) + export PNG/WebP do 8K
+- [x] **F6** — Profesionální grafika: ~38 vektorových assetů kreslených v kódu (stínované „stampy" jako Inkarnate/Dungeon Scrawl), malované textury (měkké skvrny + šum), pobřeží (hloubkový stín vody) a Dungeon-Scrawl vzhled (světlá podlaha, tučné zdi, mřížka na podlaze)
 
 ## Ovládání
 

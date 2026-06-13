@@ -1,0 +1,772 @@
+// Profesionální vektorové assety kreslené v kódu (žádné soubory, jednotný styl
+// mapových „stampů" jako Inkarnate / Dungeon Scrawl). Každý se vyrenderuje do
+// cache canvasu jednou a sdílí se mezi všemi instancemi.
+import { normalize, type CategoryId } from './assetCatalog';
+
+export interface ArtAsset {
+  id: string; // 'art:<slug>'
+  name: string;
+  category: CategoryId;
+  tags: string[];
+  draw: (ctx: CanvasRenderingContext2D, s: number) => void;
+}
+
+const OUT = '#241b12'; // jednotný tmavý obrys
+
+// — paleta —
+const COL = {
+  trunk: '#6e4a29',
+  trunkD: '#523619',
+  pine: '#356b4d',
+  pineD: '#244f39',
+  pineL: '#4b8a66',
+  leaf: '#4a7a3c',
+  leafD: '#365c2c',
+  leafL: '#629a4f',
+  stone: '#9a948799',
+  rock: '#8e9299',
+  rockD: '#6b7079',
+  rockL: '#aab0b8',
+  snow: '#eef3f8',
+  snowD: '#cfdae8',
+  wood: '#8a5a32',
+  woodD: '#664022',
+  woodL: '#a87a48',
+  roof: '#7c3b33',
+  roofD: '#5c2a24',
+  roofL: '#9c5049',
+  wall: '#cdbf9e',
+  wallD: '#a89878',
+  metal: '#aab2bb',
+  metalD: '#7c848d',
+  gold: '#d9b24a',
+  goldD: '#a8842a',
+  fire: '#f08a34',
+  fireL: '#ffd35a',
+  fireC: '#fff0b0',
+  water: '#3a7fb0',
+  waterD: '#2c6390',
+  dark: '#1b1510',
+  bone: '#e6e0cf',
+  boneD: '#bfb39a',
+  cloth: '#b8463f',
+  clothD: '#8e322d',
+};
+
+function path(ctx: CanvasRenderingContext2D, pts: number[]) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+  ctx.closePath();
+}
+function fs(ctx: CanvasRenderingContext2D, fill: string, ow: number, stroke = true) {
+  ctx.fillStyle = fill;
+  ctx.fill();
+  if (stroke) {
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = OUT;
+    ctx.lineWidth = ow;
+    ctx.stroke();
+  }
+}
+function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.closePath();
+}
+function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// soft kontaktní stín pod stampem
+function shadow(ctx: CanvasRenderingContext2D, s: number, cx = 0.5, cy = 0.9, rx = 0.32, ry = 0.07) {
+  ctx.save();
+  ctx.translate(cx * s, cy * s);
+  ctx.scale(rx * s, ry * s);
+  circle(ctx, 0, 0, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fill();
+  ctx.restore();
+}
+
+const ow = (s: number) => s * 0.022;
+
+// ————————————————————————————————— STROMY —————————————————————————————————
+function pine(ctx: CanvasRenderingContext2D, s: number, snow = false) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s);
+  path(ctx, [cx - s * 0.045, s * 0.72, cx + s * 0.045, s * 0.72, cx + s * 0.045, s * 0.9, cx - s * 0.045, s * 0.9]);
+  fs(ctx, COL.trunk, o);
+  const tier = (yTop: number, yBot: number, hw: number) => {
+    path(ctx, [cx, yTop * s, cx + hw * s, yBot * s, cx - hw * s, yBot * s]);
+    fs(ctx, COL.pine, o);
+    path(ctx, [cx, yTop * s, cx - hw * 0.5 * s, yBot * s, cx - hw * s, yBot * s]);
+    fs(ctx, COL.pineD, o, false);
+  };
+  tier(0.5, 0.78, 0.26);
+  tier(0.32, 0.58, 0.21);
+  tier(0.14, 0.4, 0.16);
+  if (snow) {
+    path(ctx, [cx, 0.14 * s, cx + 0.08 * s, 0.24 * s, cx - 0.08 * s, 0.24 * s]);
+    fs(ctx, COL.snow, o * 0.7, false);
+  }
+}
+function oak(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s);
+  path(ctx, [cx - s * 0.05, s * 0.6, cx + s * 0.05, s * 0.6, cx + s * 0.05, s * 0.9, cx - s * 0.05, s * 0.9]);
+  fs(ctx, COL.trunk, o);
+  // koruna z překrývajících se kruhů
+  ctx.beginPath();
+  for (const [dx, dy, r] of [
+    [-0.16, -0.02, 0.2],
+    [0.16, -0.02, 0.2],
+    [0, -0.18, 0.24],
+    [-0.1, -0.12, 0.18],
+    [0.1, -0.12, 0.18],
+  ] as const) {
+    ctx.moveTo((0.5 + dx) * s + r * s, (0.4 + dy) * s);
+    ctx.arc((0.5 + dx) * s, (0.4 + dy) * s, r * s, 0, Math.PI * 2);
+  }
+  fs(ctx, COL.leaf, o);
+  circle(ctx, 0.42 * s, 0.32 * s, 0.14 * s);
+  ctx.fillStyle = COL.leafL;
+  ctx.fill();
+}
+function deadTree(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s);
+  ctx.beginPath();
+  ctx.moveTo(cx, 0.92 * s);
+  ctx.lineTo(cx, 0.3 * s);
+  ctx.moveTo(cx, 0.55 * s);
+  ctx.lineTo(cx - 0.16 * s, 0.38 * s);
+  ctx.moveTo(cx, 0.45 * s);
+  ctx.lineTo(cx + 0.18 * s, 0.3 * s);
+  ctx.moveTo(cx, 0.62 * s);
+  ctx.lineTo(cx + 0.12 * s, 0.52 * s);
+  ctx.strokeStyle = COL.trunkD;
+  ctx.lineWidth = o * 2.2;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+function bush(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.3, 0.06);
+  ctx.beginPath();
+  for (const [x, y, r] of [
+    [0.32, 0.62, 0.18],
+    [0.68, 0.62, 0.18],
+    [0.5, 0.5, 0.22],
+  ] as const) {
+    ctx.moveTo(x * s + r * s, y * s);
+    ctx.arc(x * s, y * s, r * s, 0, Math.PI * 2);
+  }
+  fs(ctx, COL.leaf, o);
+  circle(ctx, 0.44 * s, 0.46 * s, 0.1 * s);
+  ctx.fillStyle = COL.leafL;
+  ctx.fill();
+}
+function palm(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s);
+  ctx.beginPath();
+  ctx.moveTo(cx - 0.03 * s, 0.9 * s);
+  ctx.quadraticCurveTo(cx + 0.06 * s, 0.55 * s, cx - 0.02 * s, 0.34 * s);
+  ctx.lineTo(cx + 0.05 * s, 0.34 * s);
+  ctx.quadraticCurveTo(cx + 0.12 * s, 0.55 * s, cx + 0.05 * s, 0.9 * s);
+  ctx.closePath();
+  fs(ctx, COL.wood, o);
+  for (const a of [-0.9, -0.4, 0.1, 0.6, 1.1]) {
+    ctx.beginPath();
+    ctx.moveTo(cx, 0.34 * s);
+    ctx.quadraticCurveTo(cx + Math.cos(a) * 0.2 * s, 0.34 * s + Math.sin(a) * 0.1 * s - 0.06 * s, cx + Math.cos(a) * 0.34 * s, 0.34 * s + Math.sin(a) * 0.16 * s + 0.02 * s);
+    ctx.strokeStyle = COL.leaf;
+    ctx.lineWidth = o * 2.4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+  circle(ctx, cx, 0.33 * s, o * 1.4);
+  ctx.fillStyle = COL.leafD;
+  ctx.fill();
+}
+function cactus(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s, 0.5, 0.9, 0.18, 0.05);
+  rrect(ctx, cx - 0.07 * s, 0.32 * s, 0.14 * s, 0.58 * s, 0.07 * s);
+  fs(ctx, COL.pineL, o);
+  rrect(ctx, cx - 0.22 * s, 0.5 * s, 0.1 * s, 0.22 * s, 0.05 * s);
+  fs(ctx, COL.pineL, o);
+  rrect(ctx, cx + 0.12 * s, 0.44 * s, 0.1 * s, 0.26 * s, 0.05 * s);
+  fs(ctx, COL.pineL, o);
+}
+function mushroomBig(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s, 0.5, 0.88, 0.2, 0.05);
+  rrect(ctx, cx - 0.1 * s, 0.5 * s, 0.2 * s, 0.4 * s, 0.08 * s);
+  fs(ctx, COL.bone, o);
+  ctx.beginPath();
+  ctx.moveTo(cx - 0.3 * s, 0.52 * s);
+  ctx.quadraticCurveTo(cx, 0.16 * s, cx + 0.3 * s, 0.52 * s);
+  ctx.closePath();
+  fs(ctx, COL.cloth, o);
+  for (const [x, r] of [[0.4, 0.04], [0.55, 0.05], [0.62, 0.035]] as const) {
+    circle(ctx, x * s, 0.4 * s, r * s);
+    ctx.fillStyle = COL.bone;
+    ctx.fill();
+  }
+}
+
+// ————————————————————————————————— TERÉN —————————————————————————————————
+function mountain(ctx: CanvasRenderingContext2D, s: number, snow = true) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.38, 0.07);
+  path(ctx, [0.5 * s, 0.14 * s, 0.86 * s, 0.84 * s, 0.14 * s, 0.84 * s]);
+  fs(ctx, COL.rock, o);
+  path(ctx, [0.5 * s, 0.14 * s, 0.86 * s, 0.84 * s, 0.5 * s, 0.84 * s]);
+  fs(ctx, COL.rockD, o, false);
+  if (snow) {
+    path(ctx, [0.5 * s, 0.14 * s, 0.64 * s, 0.4 * s, 0.55 * s, 0.36 * s, 0.5 * s, 0.44 * s, 0.45 * s, 0.34 * s, 0.36 * s, 0.4 * s]);
+    fs(ctx, COL.snow, o * 0.8);
+  }
+}
+function mountains(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.44, 0.07);
+  path(ctx, [0.28 * s, 0.34 * s, 0.54 * s, 0.86 * s, 0.02 * s, 0.86 * s]);
+  fs(ctx, COL.rockD, o);
+  path(ctx, [0.72 * s, 0.38 * s, 0.98 * s, 0.86 * s, 0.46 * s, 0.86 * s]);
+  fs(ctx, COL.rockD, o);
+  path(ctx, [0.5 * s, 0.2 * s, 0.8 * s, 0.86 * s, 0.2 * s, 0.86 * s]);
+  fs(ctx, COL.rock, o);
+  path(ctx, [0.5 * s, 0.2 * s, 0.62 * s, 0.42 * s, 0.5 * s, 0.38 * s, 0.38 * s, 0.42 * s]);
+  fs(ctx, COL.snow, o * 0.8);
+}
+function hill(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.4, 0.06);
+  ctx.beginPath();
+  ctx.moveTo(0.1 * s, 0.78 * s);
+  ctx.quadraticCurveTo(0.5 * s, 0.28 * s, 0.9 * s, 0.78 * s);
+  ctx.closePath();
+  fs(ctx, COL.leaf, o);
+  ctx.beginPath();
+  ctx.moveTo(0.5 * s, 0.4 * s);
+  ctx.quadraticCurveTo(0.72 * s, 0.5 * s, 0.9 * s, 0.78 * s);
+  ctx.lineTo(0.5 * s, 0.78 * s);
+  ctx.closePath();
+  fs(ctx, COL.leafD, o, false);
+}
+function volcano(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.38, 0.07);
+  path(ctx, [0.32 * s, 0.24 * s, 0.86 * s, 0.84 * s, 0.14 * s, 0.84 * s, 0.32 * s, 0.24 * s]);
+  fs(ctx, COL.rockD, o);
+  path(ctx, [0.3 * s, 0.26 * s, 0.46 * s, 0.26 * s, 0.5 * s, 0.34 * s, 0.26 * s, 0.34 * s]);
+  fs(ctx, COL.fire, o, false);
+  ctx.beginPath();
+  ctx.moveTo(0.34 * s, 0.3 * s);
+  ctx.quadraticCurveTo(0.4 * s, 0.5 * s, 0.5 * s, 0.6 * s);
+  ctx.strokeStyle = COL.fireL;
+  ctx.lineWidth = o * 1.6;
+  ctx.stroke();
+}
+function rockPile(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.84, 0.32, 0.06);
+  path(ctx, [0.2 * s, 0.8 * s, 0.34 * s, 0.5 * s, 0.5 * s, 0.66 * s, 0.42 * s, 0.8 * s]);
+  fs(ctx, COL.rock, o);
+  path(ctx, [0.46 * s, 0.8 * s, 0.66 * s, 0.42 * s, 0.84 * s, 0.62 * s, 0.8 * s, 0.8 * s]);
+  fs(ctx, COL.rockL, o);
+}
+function crystal(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.22, 0.05);
+  path(ctx, [0.5 * s, 0.14 * s, 0.66 * s, 0.5 * s, 0.5 * s, 0.86 * s, 0.34 * s, 0.5 * s]);
+  fs(ctx, '#6f7bd6', o);
+  path(ctx, [0.5 * s, 0.14 * s, 0.66 * s, 0.5 * s, 0.5 * s, 0.86 * s]);
+  fs(ctx, '#525fc0', o, false);
+}
+
+// ———————————————————————————————— STAVBY ————————————————————————————————
+function tower(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.24, 0.05);
+  path(ctx, [0.36 * s, 0.34 * s, 0.64 * s, 0.34 * s, 0.62 * s, 0.88 * s, 0.38 * s, 0.88 * s]);
+  fs(ctx, COL.wall, o);
+  path(ctx, [0.5 * s, 0.34 * s, 0.64 * s, 0.34 * s, 0.62 * s, 0.88 * s, 0.5 * s, 0.88 * s]);
+  fs(ctx, COL.wallD, o, false);
+  // cimbuří
+  for (let i = 0; i < 3; i++) {
+    const x = (0.36 + i * 0.1) * s;
+    ctx.fillStyle = COL.wall;
+    ctx.fillRect(x, 0.28 * s, 0.06 * s, 0.07 * s);
+    ctx.strokeStyle = OUT;
+    ctx.lineWidth = o;
+    ctx.strokeRect(x, 0.28 * s, 0.06 * s, 0.07 * s);
+  }
+  rrect(ctx, 0.44 * s, 0.66 * s, 0.12 * s, 0.22 * s, 0.06 * s);
+  fs(ctx, COL.woodD, o);
+}
+function house(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.34, 0.06);
+  ctx.fillStyle = COL.wall;
+  path(ctx, [0.24 * s, 0.5 * s, 0.76 * s, 0.5 * s, 0.76 * s, 0.88 * s, 0.24 * s, 0.88 * s]);
+  fs(ctx, COL.wall, o);
+  path(ctx, [0.18 * s, 0.52 * s, 0.5 * s, 0.24 * s, 0.82 * s, 0.52 * s]);
+  fs(ctx, COL.roof, o);
+  path(ctx, [0.5 * s, 0.24 * s, 0.82 * s, 0.52 * s, 0.5 * s, 0.52 * s]);
+  fs(ctx, COL.roofD, o, false);
+  rrect(ctx, 0.44 * s, 0.64 * s, 0.12 * s, 0.24 * s, 0.02 * s);
+  fs(ctx, COL.woodD, o);
+  ctx.fillStyle = COL.fireL;
+  ctx.fillRect(0.3 * s, 0.58 * s, 0.08 * s, 0.08 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.3 * s, 0.58 * s, 0.08 * s, 0.08 * s);
+}
+function cottage(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.34, 0.06);
+  path(ctx, [0.26 * s, 0.54 * s, 0.74 * s, 0.54 * s, 0.74 * s, 0.88 * s, 0.26 * s, 0.88 * s]);
+  fs(ctx, COL.woodL, o);
+  ctx.beginPath();
+  ctx.moveTo(0.18 * s, 0.56 * s);
+  ctx.quadraticCurveTo(0.5 * s, 0.18 * s, 0.82 * s, 0.56 * s);
+  ctx.closePath();
+  fs(ctx, '#8a6a3a', o);
+  rrect(ctx, 0.45 * s, 0.66 * s, 0.1 * s, 0.22 * s, 0.04 * s);
+  fs(ctx, COL.woodD, o);
+}
+function castle(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.92, 0.44, 0.06);
+  // hradba
+  path(ctx, [0.16 * s, 0.5 * s, 0.84 * s, 0.5 * s, 0.84 * s, 0.88 * s, 0.16 * s, 0.88 * s]);
+  fs(ctx, COL.wallD, o);
+  // věže
+  for (const x of [0.14, 0.72]) {
+    path(ctx, [x * s, 0.34 * s, (x + 0.14) * s, 0.34 * s, (x + 0.14) * s, 0.88 * s, x * s, 0.88 * s]);
+    fs(ctx, COL.wall, o);
+    for (let i = 0; i < 2; i++) {
+      ctx.fillStyle = COL.wall;
+      ctx.fillRect((x + i * 0.08) * s, 0.29 * s, 0.05 * s, 0.06 * s);
+      ctx.strokeStyle = OUT;
+      ctx.lineWidth = o;
+      ctx.strokeRect((x + i * 0.08) * s, 0.29 * s, 0.05 * s, 0.06 * s);
+    }
+  }
+  // brána
+  ctx.beginPath();
+  ctx.moveTo(0.43 * s, 0.88 * s);
+  ctx.lineTo(0.43 * s, 0.64 * s);
+  ctx.arc(0.5 * s, 0.64 * s, 0.07 * s, Math.PI, 0);
+  ctx.lineTo(0.57 * s, 0.88 * s);
+  ctx.closePath();
+  fs(ctx, COL.dark, o);
+  // vlajka
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.beginPath();
+  ctx.moveTo(0.21 * s, 0.34 * s);
+  ctx.lineTo(0.21 * s, 0.18 * s);
+  ctx.stroke();
+  path(ctx, [0.21 * s, 0.18 * s, 0.34 * s, 0.22 * s, 0.21 * s, 0.26 * s]);
+  fs(ctx, COL.cloth, o * 0.8);
+}
+function ruins(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.88, 0.36, 0.06);
+  for (const [x, h] of [[0.26, 0.4], [0.5, 0.56], [0.72, 0.32]] as const) {
+    path(ctx, [x * s, (0.88 - h) * s, (x + 0.12) * s, (0.88 - h) * s, (x + 0.12) * s, 0.88 * s, x * s, 0.88 * s]);
+    fs(ctx, COL.stone.slice(0, 7), o);
+  }
+  ctx.fillStyle = COL.wallD;
+  ctx.fillRect(0.22 * s, 0.84 * s, 0.64 * s, 0.06 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.22 * s, 0.84 * s, 0.64 * s, 0.06 * s);
+}
+function tent(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.88, 0.32, 0.06);
+  path(ctx, [0.5 * s, 0.22 * s, 0.84 * s, 0.86 * s, 0.16 * s, 0.86 * s]);
+  fs(ctx, COL.cloth, o);
+  path(ctx, [0.5 * s, 0.22 * s, 0.84 * s, 0.86 * s, 0.5 * s, 0.86 * s]);
+  fs(ctx, COL.clothD, o, false);
+  path(ctx, [0.5 * s, 0.4 * s, 0.6 * s, 0.86 * s, 0.4 * s, 0.86 * s]);
+  fs(ctx, COL.dark, o);
+}
+function well(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.26, 0.05);
+  rrect(ctx, 0.32 * s, 0.56 * s, 0.36 * s, 0.32 * s, 0.04 * s);
+  fs(ctx, COL.rock, o);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.56 * s, 0.18 * s, 0.07 * s, 0, 0, Math.PI * 2);
+  fs(ctx, COL.dark, o);
+  // stříška
+  path(ctx, [0.28 * s, 0.34 * s, 0.5 * s, 0.2 * s, 0.72 * s, 0.34 * s]);
+  fs(ctx, COL.roof, o);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.beginPath();
+  ctx.moveTo(0.33 * s, 0.34 * s);
+  ctx.lineTo(0.33 * s, 0.56 * s);
+  ctx.moveTo(0.67 * s, 0.34 * s);
+  ctx.lineTo(0.67 * s, 0.56 * s);
+  ctx.stroke();
+}
+function windmill(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.24, 0.05);
+  path(ctx, [0.4 * s, 0.4 * s, 0.6 * s, 0.4 * s, 0.66 * s, 0.88 * s, 0.34 * s, 0.88 * s]);
+  fs(ctx, COL.wall, o);
+  const cx = 0.5 * s;
+  const cy = 0.4 * s;
+  for (const a of [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+    path(ctx, [cx, cy, cx + Math.cos(a + 0.2) * 0.26 * s, cy + Math.sin(a + 0.2) * 0.26 * s, cx + Math.cos(a) * 0.3 * s, cy + Math.sin(a) * 0.3 * s]);
+    fs(ctx, COL.woodL, o * 0.8);
+  }
+  circle(ctx, cx, cy, 0.04 * s);
+  fs(ctx, COL.woodD, o);
+}
+function signpost(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.16, 0.04);
+  ctx.fillStyle = COL.wood;
+  ctx.fillRect(0.46 * s, 0.34 * s, 0.08 * s, 0.56 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.46 * s, 0.34 * s, 0.08 * s, 0.56 * s);
+  path(ctx, [0.5 * s, 0.36 * s, 0.84 * s, 0.36 * s, 0.92 * s, 0.46 * s, 0.84 * s, 0.56 * s, 0.5 * s, 0.56 * s]);
+  fs(ctx, COL.woodL, o);
+}
+function statue(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.22, 0.05);
+  ctx.fillStyle = COL.rockL;
+  ctx.fillRect(0.36 * s, 0.78 * s, 0.28 * s, 0.12 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.36 * s, 0.78 * s, 0.28 * s, 0.12 * s);
+  circle(ctx, 0.5 * s, 0.32 * s, 0.08 * s);
+  fs(ctx, COL.rock, o);
+  path(ctx, [0.42 * s, 0.4 * s, 0.58 * s, 0.4 * s, 0.6 * s, 0.78 * s, 0.4 * s, 0.78 * s]);
+  fs(ctx, COL.rock, o);
+}
+
+// ———————————————————————————————— DUNGEON ————————————————————————————————
+function chest(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.3, 0.06);
+  rrect(ctx, 0.24 * s, 0.46 * s, 0.52 * s, 0.4 * s, 0.04 * s);
+  fs(ctx, COL.wood, o);
+  ctx.beginPath();
+  ctx.moveTo(0.24 * s, 0.5 * s);
+  ctx.arc(0.5 * s, 0.5 * s, 0.26 * s, Math.PI, 0);
+  ctx.closePath();
+  fs(ctx, COL.woodL, o);
+  ctx.fillStyle = COL.metal;
+  ctx.fillRect(0.46 * s, 0.42 * s, 0.08 * s, 0.2 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.46 * s, 0.42 * s, 0.08 * s, 0.2 * s);
+  circle(ctx, 0.5 * s, 0.58 * s, 0.03 * s);
+  fs(ctx, COL.gold, o);
+}
+function doorArch(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.beginPath();
+  ctx.moveTo(0.3 * s, 0.88 * s);
+  ctx.lineTo(0.3 * s, 0.4 * s);
+  ctx.arc(0.5 * s, 0.4 * s, 0.2 * s, Math.PI, 0);
+  ctx.lineTo(0.7 * s, 0.88 * s);
+  ctx.closePath();
+  fs(ctx, COL.stone.slice(0, 7), o);
+  ctx.beginPath();
+  ctx.moveTo(0.38 * s, 0.88 * s);
+  ctx.lineTo(0.38 * s, 0.44 * s);
+  ctx.arc(0.5 * s, 0.44 * s, 0.12 * s, Math.PI, 0);
+  ctx.lineTo(0.62 * s, 0.88 * s);
+  ctx.closePath();
+  fs(ctx, COL.woodD, o);
+  circle(ctx, 0.58 * s, 0.66 * s, 0.025 * s);
+  fs(ctx, COL.gold, o * 0.7);
+}
+function barrel(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.88, 0.22, 0.05);
+  ctx.beginPath();
+  ctx.moveTo(0.34 * s, 0.4 * s);
+  ctx.quadraticCurveTo(0.28 * s, 0.64 * s, 0.34 * s, 0.86 * s);
+  ctx.lineTo(0.66 * s, 0.86 * s);
+  ctx.quadraticCurveTo(0.72 * s, 0.64 * s, 0.66 * s, 0.4 * s);
+  ctx.closePath();
+  fs(ctx, COL.wood, o);
+  ctx.strokeStyle = COL.metalD;
+  ctx.lineWidth = o * 1.4;
+  for (const y of [0.5, 0.64, 0.78]) {
+    ctx.beginPath();
+    ctx.moveTo(0.31 * s, y * s);
+    ctx.lineTo(0.69 * s, y * s);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.4 * s, 0.16 * s, 0.05 * s, 0, 0, Math.PI * 2);
+  fs(ctx, COL.woodL, o);
+}
+function crate(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.88, 0.24, 0.05);
+  rrect(ctx, 0.28 * s, 0.4 * s, 0.44 * s, 0.46 * s, 0.03 * s);
+  fs(ctx, COL.woodL, o);
+  ctx.strokeStyle = COL.woodD;
+  ctx.lineWidth = o * 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0.28 * s, 0.4 * s);
+  ctx.lineTo(0.72 * s, 0.86 * s);
+  ctx.moveTo(0.72 * s, 0.4 * s);
+  ctx.lineTo(0.28 * s, 0.86 * s);
+  ctx.stroke();
+}
+function pillar(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.2, 0.05);
+  ctx.fillStyle = COL.wallD;
+  ctx.fillRect(0.34 * s, 0.82 * s, 0.32 * s, 0.08 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.34 * s, 0.82 * s, 0.32 * s, 0.08 * s);
+  ctx.fillStyle = COL.wall;
+  ctx.fillRect(0.4 * s, 0.24 * s, 0.2 * s, 0.58 * s);
+  ctx.strokeRect(0.4 * s, 0.24 * s, 0.2 * s, 0.58 * s);
+  ctx.fillStyle = COL.wallD;
+  ctx.fillRect(0.36 * s, 0.18 * s, 0.28 * s, 0.08 * s);
+  ctx.strokeRect(0.36 * s, 0.18 * s, 0.28 * s, 0.08 * s);
+}
+function brazier(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.18, 0.05);
+  path(ctx, [0.4 * s, 0.6 * s, 0.6 * s, 0.6 * s, 0.56 * s, 0.88 * s, 0.44 * s, 0.88 * s]);
+  fs(ctx, COL.metalD, o);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.6 * s, 0.16 * s, 0.06 * s, 0, 0, Math.PI * 2);
+  fs(ctx, COL.metal, o);
+  ctx.beginPath();
+  ctx.moveTo(0.4 * s, 0.58 * s);
+  ctx.quadraticCurveTo(0.46 * s, 0.3 * s, 0.5 * s, 0.42 * s);
+  ctx.quadraticCurveTo(0.54 * s, 0.3 * s, 0.6 * s, 0.58 * s);
+  ctx.closePath();
+  fs(ctx, COL.fire, o * 0.6, false);
+  ctx.beginPath();
+  ctx.moveTo(0.45 * s, 0.56 * s);
+  ctx.quadraticCurveTo(0.5 * s, 0.36 * s, 0.55 * s, 0.56 * s);
+  ctx.closePath();
+  ctx.fillStyle = COL.fireC;
+  ctx.fill();
+}
+function skullPile(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.28, 0.05);
+  ctx.strokeStyle = COL.boneD;
+  ctx.lineWidth = o * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(0.24 * s, 0.78 * s);
+  ctx.lineTo(0.6 * s, 0.82 * s);
+  ctx.moveTo(0.3 * s, 0.84 * s);
+  ctx.lineTo(0.7 * s, 0.78 * s);
+  ctx.stroke();
+  circle(ctx, 0.44 * s, 0.6 * s, 0.16 * s);
+  fs(ctx, COL.bone, o);
+  circle(ctx, 0.4 * s, 0.58 * s, 0.035 * s);
+  circle(ctx, 0.5 * s, 0.58 * s, 0.035 * s);
+  ctx.fillStyle = COL.dark;
+  ctx.fill();
+  circle(ctx, 0.4 * s, 0.58 * s, 0.035 * s);
+  ctx.fill();
+}
+function altar(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.3, 0.05);
+  ctx.fillStyle = COL.rock;
+  ctx.fillRect(0.3 * s, 0.5 * s, 0.4 * s, 0.4 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.3 * s, 0.5 * s, 0.4 * s, 0.4 * s);
+  ctx.fillStyle = COL.rockL;
+  ctx.fillRect(0.26 * s, 0.44 * s, 0.48 * s, 0.1 * s);
+  ctx.strokeRect(0.26 * s, 0.44 * s, 0.48 * s, 0.1 * s);
+  circle(ctx, 0.5 * s, 0.34 * s, 0.06 * s);
+  fs(ctx, '#7d8ae0', o * 0.7);
+}
+function trapdoor(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.fillStyle = COL.woodD;
+  ctx.fillRect(0.26 * s, 0.3 * s, 0.48 * s, 0.48 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.26 * s, 0.3 * s, 0.48 * s, 0.48 * s);
+  ctx.strokeStyle = COL.wood;
+  ctx.lineWidth = o * 1.2;
+  for (const x of [0.38, 0.5, 0.62]) {
+    ctx.beginPath();
+    ctx.moveTo(x * s, 0.3 * s);
+    ctx.lineTo(x * s, 0.78 * s);
+    ctx.stroke();
+  }
+  circle(ctx, 0.66 * s, 0.54 * s, 0.05 * s);
+  ctx.strokeStyle = COL.metal;
+  ctx.lineWidth = o * 1.4;
+  ctx.stroke();
+}
+function stairs(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  for (let i = 0; i < 5; i++) {
+    const w = 0.6 - i * 0.08;
+    const y = 0.3 + i * 0.1;
+    ctx.fillStyle = i % 2 ? COL.wallD : COL.wall;
+    ctx.fillRect((0.5 - w / 2) * s, y * s, w * s, 0.1 * s);
+    ctx.strokeStyle = OUT;
+    ctx.lineWidth = o;
+    ctx.strokeRect((0.5 - w / 2) * s, y * s, w * s, 0.1 * s);
+  }
+}
+
+// ———————————————————————————————— ZNAČKY ————————————————————————————————
+function flag(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.strokeStyle = COL.woodD;
+  ctx.lineWidth = o * 1.6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0.36 * s, 0.9 * s);
+  ctx.lineTo(0.36 * s, 0.16 * s);
+  ctx.stroke();
+  path(ctx, [0.36 * s, 0.18 * s, 0.74 * s, 0.28 * s, 0.36 * s, 0.42 * s]);
+  fs(ctx, COL.cloth, o);
+}
+function banner(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.fillStyle = COL.woodL;
+  ctx.fillRect(0.28 * s, 0.2 * s, 0.44 * s, 0.05 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.28 * s, 0.2 * s, 0.44 * s, 0.05 * s);
+  path(ctx, [0.34 * s, 0.25 * s, 0.66 * s, 0.25 * s, 0.66 * s, 0.78 * s, 0.5 * s, 0.68 * s, 0.34 * s, 0.78 * s]);
+  fs(ctx, COL.cloth, o);
+  circle(ctx, 0.5 * s, 0.46 * s, 0.07 * s);
+  fs(ctx, COL.gold, o * 0.8);
+}
+function xMark(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.strokeStyle = '#c43b2f';
+  ctx.lineWidth = o * 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0.3 * s, 0.3 * s);
+  ctx.lineTo(0.7 * s, 0.7 * s);
+  ctx.moveTo(0.7 * s, 0.3 * s);
+  ctx.lineTo(0.3 * s, 0.7 * s);
+  ctx.stroke();
+}
+
+// ———————————————————————————————— REGISTR ————————————————————————————————
+type Def = [slug: string, name: string, category: CategoryId, tags: string, draw: ArtAsset['draw']];
+
+const DEFS: Def[] = [
+  ['pine', 'Borovice', 'priroda', 'strom les jehlicnan tree pine', (c, s) => pine(c, s)],
+  ['pine-snow', 'Zasněžená borovice', 'priroda', 'strom snih tree winter', (c, s) => pine(c, s, true)],
+  ['oak', 'Dub', 'priroda', 'strom listnaty tree oak', oak],
+  ['dead-tree', 'Suchý strom', 'priroda', 'strom mrtvy dead tree', deadTree],
+  ['bush', 'Keř', 'priroda', 'kere bush shrub', bush],
+  ['palm', 'Palma', 'priroda', 'tropy palm tree', palm],
+  ['cactus', 'Kaktus', 'priroda', 'poust cactus', cactus],
+  ['mushroom', 'Velká houba', 'priroda', 'houba mushroom', mushroomBig],
+  ['mountain', 'Hora', 'teren', 'hora mountain snih', (c, s) => mountain(c, s, true)],
+  ['mountain-bare', 'Holá hora', 'teren', 'hora mountain', (c, s) => mountain(c, s, false)],
+  ['mountains', 'Pohoří', 'teren', 'hory pohori mountains range', mountains],
+  ['hill', 'Kopec', 'teren', 'kopec hill', hill],
+  ['volcano', 'Sopka', 'teren', 'sopka volcano lava', volcano],
+  ['rocks', 'Skály', 'teren', 'skala kameny rocks', rockPile],
+  ['crystal', 'Krystal', 'teren', 'krystal crystal gem', crystal],
+  ['tower', 'Věž', 'stavby', 'vez tower', tower],
+  ['house', 'Dům', 'stavby', 'dum house home', house],
+  ['cottage', 'Chalupa', 'stavby', 'chalupa chata cottage', cottage],
+  ['castle', 'Hrad', 'stavby', 'hrad castle fortress', castle],
+  ['ruins', 'Ruiny', 'stavby', 'ruiny ruins', ruins],
+  ['tent', 'Stan', 'stavby', 'stan tabor tent camp', tent],
+  ['well', 'Studna', 'stavby', 'studna well', well],
+  ['windmill', 'Větrný mlýn', 'stavby', 'mlyn windmill', windmill],
+  ['signpost', 'Rozcestník', 'stavby', 'cedule rozcestnik signpost', signpost],
+  ['statue', 'Socha', 'stavby', 'socha statue', statue],
+  ['chest', 'Truhla', 'dungeon', 'truhla poklad chest treasure', chest],
+  ['door', 'Dveře', 'dungeon', 'dvere door', doorArch],
+  ['barrel', 'Sud', 'dungeon', 'sud barrel', barrel],
+  ['crate', 'Bedna', 'dungeon', 'bedna crate box', crate],
+  ['pillar', 'Sloup', 'dungeon', 'sloup pilir column pillar', pillar],
+  ['brazier', 'Koš s ohněm', 'dungeon', 'ohen pochoden brazier torch fire', brazier],
+  ['skulls', 'Kosti', 'dungeon', 'lebka kosti bones skull', skullPile],
+  ['altar', 'Oltář', 'dungeon', 'oltar altar', altar],
+  ['trapdoor', 'Padací dveře', 'dungeon', 'poklop trapdoor hatch', trapdoor],
+  ['stairs', 'Schody', 'dungeon', 'schody stairs', stairs],
+  ['flag', 'Vlajka', 'znacky', 'vlajka flag', flag],
+  ['banner', 'Korouhev', 'znacky', 'korouhev banner', banner],
+  ['x-mark', 'Značka X', 'znacky', 'x poklad treasure mark', xMark],
+];
+
+export const ART_ASSETS: ArtAsset[] = DEFS.map(([slug, name, category, tags, draw]) => ({
+  id: `art:${slug}`,
+  name,
+  category,
+  tags: tags.split(/\s+/),
+  draw,
+}));
+
+const BY_ID = new Map(ART_ASSETS.map((a) => [a.id, a]));
+export function artById(id: string): ArtAsset | undefined {
+  return BY_ID.get(id);
+}
+
+const cache = new Map<string, HTMLCanvasElement>();
+export function getArtCanvas(id: string, px = 256): HTMLCanvasElement | null {
+  const key = `${id}@${px}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
+  const def = artById(id);
+  if (!def) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = px;
+  canvas.height = px;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  def.draw(ctx, px);
+  cache.set(key, canvas);
+  return canvas;
+}
+
+export function searchArt(query: string, category: CategoryId | 'all'): ArtAsset[] {
+  const q = normalize(query);
+  return ART_ASSETS.filter((a) => {
+    if (category !== 'all' && a.category !== category) return false;
+    if (!q) return true;
+    if (normalize(a.name).includes(q)) return true;
+    return a.tags.some((t) => normalize(t).includes(q));
+  });
+}
+
+export const ART_COUNT = ART_ASSETS.length;

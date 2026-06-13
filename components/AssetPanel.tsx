@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Upload, Trash2, X } from 'lucide-react';
 import {
   CATEGORIES,
@@ -9,8 +9,23 @@ import {
   CATALOG_COUNT,
   type CategoryId,
 } from '@/lib/assetCatalog';
+import { searchArt, getArtCanvas, ART_COUNT } from '@/lib/artAssets';
 import { useEditorStore } from '@/store/editorStore';
 import { useAssetLibStore } from '@/store/assetLibStore';
+
+function ArtThumb({ id }: { id: string }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const art = getArtCanvas(id, 96);
+    const ctx = c.getContext('2d');
+    if (!art || !ctx) return;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(art, 0, 0, c.width, c.height);
+  }, [id]);
+  return <canvas ref={ref} width={56} height={56} className="h-full w-full" />;
+}
 
 type Filter = CategoryId | 'all' | 'moje';
 
@@ -32,13 +47,18 @@ export default function AssetPanel() {
     return customs.filter((c) => !q || normalize(c.name).includes(q));
   }, [customs, query]);
 
+  const artResults = useMemo(() => {
+    if (filter === 'moje') return [];
+    return searchArt(query, filter === 'all' ? 'all' : filter);
+  }, [query, filter]);
+
   const catalogResults = useMemo(() => {
     if (filter === 'moje') return [];
     return searchCatalog(query, filter === 'all' ? 'all' : filter);
   }, [query, filter]);
 
   const showCustom = filter === 'all' || filter === 'moje';
-  const total = catalogResults.length + (showCustom ? customResults.length : 0);
+  const total = artResults.length + catalogResults.length + (showCustom ? customResults.length : 0);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files) return;
@@ -89,7 +109,7 @@ export default function AssetPanel() {
 
         <div className="mt-2 flex items-center justify-between">
           <span className="text-[11px] text-ink-400">
-            {query || filter !== 'all' ? `Nalezeno: ${total}` : `${CATALOG_COUNT + customs.length} prvků`}
+            {query || filter !== 'all' ? `Nalezeno: ${total}` : `${ART_COUNT + CATALOG_COUNT + customs.length} prvků`}
           </span>
           <button
             onClick={() => fileInput.current?.click()}
@@ -118,6 +138,24 @@ export default function AssetPanel() {
           handleFiles(e.dataTransfer.files);
         }}
       >
+        {artResults.map((a) => {
+          const active = stampAssetId === a.id;
+          return (
+            <button
+              key={a.id}
+              onClick={() => pickStampAsset(a.id)}
+              title={a.name}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData('text/cartographer-asset', a.id)}
+              className={`flex aspect-square items-center justify-center rounded-md p-1 ring-1 transition-colors ${
+                active ? 'bg-ember/15 ring-ember/50' : 'bg-ink-800 ring-white/5 hover:bg-ink-700'
+              }`}
+            >
+              <ArtThumb id={a.id} />
+            </button>
+          );
+        })}
+
         {showCustom &&
           customResults.map((c) => {
             const img = images[c.id];

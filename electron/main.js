@@ -160,7 +160,7 @@ async function createWindow() {
             });
             await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
             await new Promise(r => setTimeout(r, 250));
-            const terrain = document.querySelectorAll('canvas')[1];
+            const terrain = document.querySelectorAll('canvas')[2];
             const pr = terrain.width / terrain.getBoundingClientRect().width;
             const ctx = terrain.getContext('2d');
             const at = (x,y) => { const d = ctx.getImageData(Math.round(x*pr), Math.round(y*pr), 1, 1).data; return { r:d[0], g:d[1], b:d[2], a:d[3] }; };

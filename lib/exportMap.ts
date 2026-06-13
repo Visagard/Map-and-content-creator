@@ -4,13 +4,20 @@
 import type { MapDocument, EditorMode, WorldScene, DungeonScene } from './types';
 import { catalogById } from './assetCatalog';
 import { getEmojiCanvas } from './assetImages';
+import { getArtCanvas } from './artAssets';
 import { getTextureCanvas } from './textures';
 import { useAssetLibStore } from '@/store/assetLibStore';
 
 const ASSET_BASE = 80;
+const COAST = 18;
+const COAST_COLOR = 'rgba(8,26,40,0.55)';
+const FLOOR = '#c7c1b0';
+const WALL = '#15171c';
+const WALL_W = 5;
 
 function resolveImage(assetId: string): CanvasImageSource | null {
   if (assetId.startsWith('usr:')) return useAssetLibStore.getState().images[assetId] ?? null;
+  if (assetId.startsWith('art:')) return getArtCanvas(assetId);
   const c = catalogById(assetId);
   return c ? getEmojiCanvas(c.emoji) : null;
 }
@@ -164,6 +171,27 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
       ctx.fillStyle = doc.world.waterStyle.color;
       ctx.fillRect(minX, minY, W, H);
     }
+    // Pobřeží na vlastní vrstvě (erase nesmí prožrat vodu pod ním)
+    const coast = document.createElement('canvas');
+    coast.width = cw;
+    coast.height = ch;
+    const cxst = coast.getContext('2d');
+    if (cxst) {
+      applyWorldTransform(cxst);
+      for (const id of doc.world.terrainOrder) {
+        const s = doc.world.terrainStrokes[id];
+        if (!s || s.kind === 'texture') continue;
+        cxst.save();
+        if (s.kind === 'erase') cxst.globalCompositeOperation = 'destination-out';
+        cxst.strokeStyle = COAST_COLOR;
+        strokePath(cxst, s.points, s.size + COAST * 2);
+        cxst.restore();
+      }
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(coast, 0, 0);
+      ctx.restore();
+    }
     // Terén na oddělené vrstvě → source-atop klipuje jen na pevninu, ne na vodu
     const tc = document.createElement('canvas');
     tc.width = cw;
@@ -197,15 +225,15 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     drawAssets(ctx, doc.world);
   } else {
     if (opts.background !== 'transparent') {
-      ctx.fillStyle = '#0b0d12';
+      ctx.fillStyle = '#0e0f13';
       ctx.fillRect(minX, minY, W, H);
     }
-    // Podlaha = chodby + místnosti (stejná barva → splývají)
-    ctx.fillStyle = '#3a4150';
+    // Podlaha = chodby + místnosti (světlý kámen, splývají)
+    ctx.fillStyle = FLOOR;
     for (const id of doc.dungeon.corridorOrder) {
       const c = doc.dungeon.corridors[id];
       if (!c) continue;
-      ctx.strokeStyle = '#3a4150';
+      ctx.strokeStyle = FLOOR;
       strokePath(ctx, c.points, c.width);
     }
     for (const id of doc.dungeon.roomOrder) {
@@ -213,17 +241,17 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
       if (!r) continue;
       ctx.fillRect(r.x, r.y, r.width, r.height);
     }
-    // Obvodové zdi místností
-    ctx.lineWidth = Math.max(2 / ratio, 1);
-    ctx.strokeStyle = '#cdb386';
-    for (const id of doc.dungeon.roomOrder) {
-      const r = doc.dungeon.rooms[id];
-      if (!r) continue;
-      ctx.strokeRect(r.x, r.y, r.width, r.height);
-    }
+    // Mřížka jen na podlaze (ořez na místnosti), pod zdmi
     if (opts.grid) {
       const cell = doc.dungeon.grid.cellSize;
-      ctx.strokeStyle = 'rgba(150,170,210,0.18)';
+      ctx.save();
+      ctx.beginPath();
+      for (const id of doc.dungeon.roomOrder) {
+        const r = doc.dungeon.rooms[id];
+        if (r) ctx.rect(r.x, r.y, r.width, r.height);
+      }
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(20,24,32,0.4)';
       ctx.lineWidth = 1 / ratio;
       ctx.beginPath();
       for (let x = Math.ceil(minX / cell) * cell; x <= minX + W; x += cell) {
@@ -235,6 +263,16 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
         ctx.lineTo(minX + W, y);
       }
       ctx.stroke();
+      ctx.restore();
+    }
+    // Obvodové zdi místností (tučné tmavé) — Dungeon Scrawl styl
+    ctx.lineJoin = 'miter';
+    ctx.lineWidth = WALL_W;
+    ctx.strokeStyle = WALL;
+    for (const id of doc.dungeon.roomOrder) {
+      const r = doc.dungeon.rooms[id];
+      if (!r) continue;
+      ctx.strokeRect(r.x, r.y, r.width, r.height);
     }
     drawAssets(ctx, doc.dungeon);
   }

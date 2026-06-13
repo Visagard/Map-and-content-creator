@@ -48,12 +48,20 @@ function hashId(id: string): number {
   return h >>> 0;
 }
 
+function hexToRgba(hex: string, a: number): string {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 export function getTextureCanvas(id: string): HTMLCanvasElement {
   const hit = cache.get(id);
   if (hit) return hit;
 
   const p = PALETTE[id] ?? PALETTE.grass;
-  const px = 96;
+  const px = 128; // větší dlaždice → méně viditelné opakování
   const canvas = document.createElement('canvas');
   canvas.width = px;
   canvas.height = px;
@@ -61,29 +69,37 @@ export function getTextureCanvas(id: string): HTMLCanvasElement {
   ctx.fillStyle = p.base;
   ctx.fillRect(0, 0, px, px);
 
-  // Deterministický PRNG → stabilní dlaždice (stejná při každém renderu)
+  // Deterministický PRNG → stabilní dlaždice
   let seed = hashId(id);
   const rnd = () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
 
-  // Dlaždice musí navazovat → tečky u okraje překresli i na protější stranu
-  const dot = (x: number, y: number, color: string, s: number) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, s, s);
-    if (x + s > px) ctx.fillRect(x - px, y, s, s);
-    if (y + s > px) ctx.fillRect(x, y - px, s, s);
-    if (x + s > px && y + s > px) ctx.fillRect(x - px, y - px, s, s);
+  // Měkké malované skvrny (vykreslené i přes okraje → bezešvé dlaždicování)
+  const blob = (x: number, y: number, r: number, hex: string, a: number) => {
+    for (const ox of [-px, 0, px]) {
+      for (const oy of [-px, 0, px]) {
+        const g = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        g.addColorStop(0, hexToRgba(hex, a));
+        g.addColorStop(1, hexToRgba(hex, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x + ox, y + oy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   };
+  for (let i = 0; i < 46; i++) {
+    blob(rnd() * px, rnd() * px, (0.08 + rnd() * 0.2) * px, p.dots[(rnd() * p.dots.length) | 0], 0.12 + rnd() * 0.22);
+  }
 
-  const count = 1100;
-  for (let i = 0; i < count; i++) {
+  // Jemný zrnitý šum navrch
+  for (let i = 0; i < 850; i++) {
     const x = (rnd() * px) | 0;
     const y = (rnd() * px) | 0;
-    const color = p.dots[(rnd() * p.dots.length) | 0];
-    const s = 1 + ((rnd() * 2) | 0);
-    dot(x, y, color, s);
+    ctx.fillStyle = hexToRgba(p.dots[(rnd() * p.dots.length) | 0], 0.22 + rnd() * 0.4);
+    ctx.fillRect(x, y, 1, 1);
   }
 
   cache.set(id, canvas);

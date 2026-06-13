@@ -8,6 +8,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { useAssetLibStore } from '@/store/assetLibStore';
 import { catalogById } from '@/lib/assetCatalog';
 import { getEmojiCanvas } from '@/lib/assetImages';
+import { getArtCanvas } from '@/lib/artAssets';
 import type { EditorMode, PlacedAsset } from '@/lib/types';
 
 const BASE = 80; // velikost delší strany prvku ve world px při scale=1
@@ -15,6 +16,7 @@ const BASE = 80; // velikost delší strany prvku ve world px při scale=1
 function useAssetImage(assetId: string): CanvasImageSource | null {
   const custom = useAssetLibStore((s) => (assetId.startsWith('usr:') ? s.images[assetId] : undefined));
   if (assetId.startsWith('usr:')) return custom ?? null;
+  if (assetId.startsWith('art:')) return getArtCanvas(assetId);
   const cat = catalogById(assetId);
   return cat ? getEmojiCanvas(cat.emoji) : null;
 }

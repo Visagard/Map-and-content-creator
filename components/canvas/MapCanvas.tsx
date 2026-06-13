@@ -14,6 +14,14 @@ const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(mi
 const SCALE_MIN = 0.05;
 const SCALE_MAX = 16;
 
+// Pobřeží = tmavší „hloubkový" prstenec vody kolem pevniny (vzhled à la Inkarnate)
+const COAST = 18;
+const COAST_COLOR = 'rgba(8,26,40,0.55)';
+// Dungeon styl (Dungeon Scrawl): světlá podlaha, tučné tmavé zdi
+const FLOOR = '#c7c1b0';
+const WALL = '#15171c';
+const WALL_W = 5;
+
 /** Drží-li uživatel mezerník (dočasný pan). */
 function useSpaceHeld() {
   const [held, setHeld] = useState(false);
@@ -329,7 +337,7 @@ export default function MapCanvas() {
       : isDrawingTool
         ? 'cursor-crosshair'
         : 'cursor-default';
-  const gridColor = mode === 'world' ? 'rgba(180,210,230,0.06)' : 'rgba(150,170,210,0.10)';
+  const gridColor = mode === 'world' ? 'rgba(180,210,230,0.06)' : 'rgba(20,24,32,0.45)';
   const sceneEmpty =
     mode === 'world'
       ? terrainOrder.length === 0 && worldAssetCount === 0
@@ -363,6 +371,26 @@ export default function MapCanvas() {
               {/* Voda — vlastní vrstva pod terénem (klíč pro maskování v F4) */}
               <Layer listening={false}>
                 <Rect x={view.left} y={view.top} width={view.right - view.left} height={view.bottom - view.top} fill={waterColor} perfectDrawEnabled={false} />
+              </Layer>
+              {/* Pobřeží — širší tmavý obrys pevniny pod terénem → prstenec hlubší vody */}
+              <Layer listening={false}>
+                {terrainOrder.map((id) => {
+                  const s = terrainStrokes[id];
+                  if (!s || s.kind === 'texture') return null;
+                  return (
+                    <Line
+                      key={id}
+                      points={s.points}
+                      stroke={COAST_COLOR}
+                      strokeWidth={s.size + COAST * 2}
+                      lineCap="round"
+                      lineJoin="round"
+                      globalCompositeOperation={s.kind === 'erase' ? 'destination-out' : undefined}
+                      listening={false}
+                      perfectDrawEnabled={false}
+                    />
+                  );
+                })}
               </Layer>
               {/* Terén — DVA průchody ve stejné vrstvě:
                   1) pevnina + mazání (definuje alfa masku pevniny)
@@ -430,7 +458,7 @@ export default function MapCanvas() {
                   <Line
                     key={id}
                     points={c.points}
-                    stroke="rgba(58,65,80,0.96)"
+                    stroke={FLOOR}
                     strokeWidth={c.width}
                     lineCap="round"
                     lineJoin="round"
@@ -449,9 +477,9 @@ export default function MapCanvas() {
                     y={r.y}
                     width={r.width}
                     height={r.height}
-                    fill="rgba(58,65,80,0.96)"
-                    stroke="#cdb386"
-                    strokeWidth={2 / camera.scale}
+                    fill={FLOOR}
+                    stroke={WALL}
+                    strokeWidth={WALL_W}
                     listening={false}
                     perfectDrawEnabled={false}
                   />
