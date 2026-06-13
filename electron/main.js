@@ -126,11 +126,16 @@ async function createWindow() {
   if (process.env.CARTO_SMOKE) {
     mainWindow.webContents.on('did-finish-load', async () => {
       try {
+        // Počkej, než se domountuje dynamicky načtené Konva plátno
+        await new Promise((r) => setTimeout(r, 1500));
         const title = await mainWindow.webContents.executeJavaScript('document.title');
         const ok = await mainWindow.webContents.executeJavaScript(
           "document.body && document.body.innerText.includes('Cartographer')",
         );
-        console.log(`[smoke] loaded title="${title}" shellVisible=${ok}`);
+        const canvases = await mainWindow.webContents.executeJavaScript(
+          'document.querySelectorAll("canvas").length',
+        );
+        console.log(`[smoke] loaded title="${title}" shellVisible=${ok} konvaCanvases=${canvases}`);
         setTimeout(() => app.quit(), 400);
       } catch (e) {
         console.log('[smoke] eval error', e);

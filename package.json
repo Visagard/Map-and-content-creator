@@ -11,14 +11,14 @@
     "preview": "npx serve out",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --tsconfig tsconfig.json scripts/test-store.mts",
     "icon": "node scripts/gen-icon.mjs",
     "electron": "electron .",
     "electron:dev": "cross-env ELECTRON_DEV=1 electron .",
     "app": "npm run icon && npm run build && electron .",
     "dist": "npm run icon && npm run build && electron-builder",
     "dist:win": "npm run icon && npm run build && electron-builder --win",
-    "dist:mac": "npm run icon && npm run build && electron-builder --mac",
-    "dist:linux": "npm run icon && npm run build && electron-builder --linux"
+    "dist:mac": "npm run icon && npm run build && electron-builder --mac"
   },
   "dependencies": {
     "immer": "^10.1.1",
@@ -43,6 +43,7 @@
     "eslint-config-next": "^14.2.35",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
+    "tsx": "^4.22.4",
     "typescript": "^5.5.3"
   }
 }

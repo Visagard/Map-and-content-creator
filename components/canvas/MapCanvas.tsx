@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Konva from 'konva';
-import { Stage, Layer, Line } from 'react-konva';
+import { Stage, Layer, Line, Rect } from 'react-konva';
 import { useEditorStore } from '@/store/editorStore';
 import { useDocumentStore } from '@/store/documentStore';
+import BrushCursor from './BrushCursor';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const SCALE_MIN = 0.05;
@@ -42,73 +43,67 @@ interface ViewRect {
   bottom: number;
 }
 
-/** Adaptivní grid: kreslí jen viditelné čáry, při oddálení buňky zvětšuje. */
-function GridLayer({
-  view,
-  baseCell,
-  scale,
-  color,
-}: {
-  view: ViewRect;
-  baseCell: number;
-  scale: number;
-  color: string;
-}) {
+function GridLayer({ view, baseCell, scale, color }: { view: ViewRect; baseCell: number; scale: number; color: string }) {
   const lines = useMemo(() => {
     let cell = baseCell;
     while ((view.right - view.left) / cell > 240) cell *= 2;
-
-    const strokeWidth = 1 / scale; // 1px na obrazovce nezávisle na zoomu
+    const strokeWidth = 1 / scale;
     const out: React.ReactNode[] = [];
     const startX = Math.floor(view.left / cell) * cell;
     const startY = Math.floor(view.top / cell) * cell;
-
     for (let x = startX; x <= view.right; x += cell) {
       out.push(
-        <Line
-          key={`v${x}`}
-          points={[x, view.top, x, view.bottom]}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          listening={false}
-          perfectDrawEnabled={false}
-        />,
+        <Line key={`v${x}`} points={[x, view.top, x, view.bottom]} stroke={color} strokeWidth={strokeWidth} listening={false} perfectDrawEnabled={false} />,
       );
     }
     for (let y = startY; y <= view.bottom; y += cell) {
       out.push(
-        <Line
-          key={`h${y}`}
-          points={[view.left, y, view.right, y]}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          listening={false}
-          perfectDrawEnabled={false}
-        />,
+        <Line key={`h${y}`} points={[view.left, y, view.right, y]} stroke={color} strokeWidth={strokeWidth} listening={false} perfectDrawEnabled={false} />,
       );
     }
     return out;
   }, [view.left, view.top, view.right, view.bottom, baseCell, scale, color]);
-
   return <Layer listening={false}>{lines}</Layer>;
+}
+
+interface LiveStroke {
+  kind: 'land' | 'erase';
+  points: number[];
+  size: number;
 }
 
 export default function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  const liveLineRef = useRef<Konva.Line>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState(false);
 
+  // --- store ---
   const mode = useEditorStore((s) => s.mode);
   const tool = useEditorStore((s) => s.tool);
   const camera = useEditorStore((s) => s.camera);
+  const brushSize = useEditorStore((s) => s.brush.size);
   const setCamera = useEditorStore((s) => s.setCamera);
   const setCursor = useEditorStore((s) => s.setCursor);
-  const gridCell = useDocumentStore((s) => s.doc.dungeon.grid.cellSize);
 
+  const apply = useDocumentStore((s) => s.apply);
+  const waterColor = useDocumentStore((s) => s.doc.world.waterStyle.color);
+  const landColor = useDocumentStore((s) => s.doc.world.landColor);
+  const terrainStrokes = useDocumentStore((s) => s.doc.world.terrainStrokes);
+  const terrainOrder = useDocumentStore((s) => s.doc.world.terrainOrder);
+  const gridCell = useDocumentStore((s) => s.doc.dungeon.grid.cellSize);
+  const rooms = useDocumentStore((s) => s.doc.dungeon.rooms);
+  const roomOrder = useDocumentStore((s) => s.doc.dungeon.roomOrder);
+
+  // --- interaction state ---
   const spaceHeld = useSpaceHeld();
   const isPanTool = tool === 'pan' || spaceHeld;
   const panStart = useRef<{ px: number; py: number; camX: number; camY: number } | null>(null);
+  const liveStroke = useRef<LiveStroke | null>(null);
+  const [stroking, setStroking] = useState(false);
+  const roomStart = useRef<{ x: number; y: number } | null>(null);
+  const [roomDraft, setRoomDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // Měření kontejneru → rozměry Stage
   useEffect(() => {
@@ -131,72 +126,135 @@ export default function MapCanvas() {
     [camera.x, camera.y, camera.scale, size.width, size.height],
   );
 
-  // Zoom ke kurzoru kolečkem
+  const toWorld = () => {
+    const p = stageRef.current?.getPointerPosition();
+    if (!p) return null;
+    return { x: (p.x - camera.x) / camera.scale, y: (p.y - camera.y) / camera.scale };
+  };
+
+  // --- zoom ke kurzoru ---
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
-    const stage = stageRef.current;
-    const pointer = stage?.getPointerPosition();
+    const pointer = stageRef.current?.getPointerPosition();
     if (!pointer) return;
     const old = camera.scale;
-    const worldX = (pointer.x - camera.x) / old;
-    const worldY = (pointer.y - camera.y) / old;
-    const factor = 1.1;
-    const next = clamp(e.evt.deltaY > 0 ? old / factor : old * factor, SCALE_MIN, SCALE_MAX);
-    setCamera({
-      scale: next,
-      x: pointer.x - worldX * next,
-      y: pointer.y - worldY * next,
+    const wx = (pointer.x - camera.x) / old;
+    const wy = (pointer.y - camera.y) / old;
+    const next = clamp(e.evt.deltaY > 0 ? old / 1.1 : old * 1.1, SCALE_MIN, SCALE_MAX);
+    setCamera({ scale: next, x: pointer.x - wx * next, y: pointer.y - wy * next });
+  };
+
+  // --- commit helpers (každý = jeden krok historie) ---
+  const finalizeStroke = () => {
+    const s = liveStroke.current;
+    liveStroke.current = null;
+    setStroking(false);
+    if (!s) return;
+    if (s.points.length < 4) s.points.push(s.points[0] + 0.01, s.points[1] + 0.01); // klik = tečka
+    const id = crypto.randomUUID();
+    apply(s.kind === 'erase' ? 'Mazání pevniny' : 'Tah pevninou', (d) => {
+      d.world.terrainStrokes[id] = { id, kind: s.kind, points: s.points, size: s.size };
+      d.world.terrainOrder.push(id);
     });
   };
 
-  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  const finalizeRoom = () => {
+    const draft = roomDraft;
+    roomStart.current = null;
+    setRoomDraft(null);
+    if (!draft || draft.w < 1 || draft.h < 1) return;
+    const id = crypto.randomUUID();
+    apply('Místnost', (d) => {
+      d.dungeon.rooms[id] = { id, x: draft.x, y: draft.y, width: draft.w, height: draft.h };
+      d.dungeon.roomOrder.push(id);
+    });
+  };
+
+  // --- pointer handlers ---
+  const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const middle = e.evt.button === 1;
     const left = e.evt.button === 0;
+    const w = toWorld();
+
     if (middle || (left && isPanTool)) {
-      const stage = stageRef.current;
-      const p = stage?.getPointerPosition();
+      const p = stageRef.current?.getPointerPosition();
       if (!p) return;
       panStart.current = { px: p.x, py: p.y, camX: camera.x, camY: camera.y };
       setDragging(true);
       e.evt.preventDefault();
-    }
-    // Kreslicí nástroje (Land/Texture/Room…) se napojí ve fázi F3+.
-  };
-
-  const handleMouseMove = () => {
-    const stage = stageRef.current;
-    const p = stage?.getPointerPosition();
-    if (!p) return;
-
-    if (panStart.current) {
-      setCamera({
-        x: panStart.current.camX + (p.x - panStart.current.px),
-        y: panStart.current.camY + (p.y - panStart.current.py),
-      });
       return;
     }
-    setCursor({
-      x: (p.x - camera.x) / camera.scale,
-      y: (p.y - camera.y) / camera.scale,
-    });
+    if (!left || !w) return;
+
+    if (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) {
+      liveStroke.current = { kind: tool === 'erase' ? 'erase' : 'land', points: [w.x, w.y], size: brushSize };
+      setStroking(true);
+    } else if (mode === 'dungeon' && tool === 'room') {
+      const snap = (v: number) => Math.round(v / gridCell) * gridCell;
+      roomStart.current = { x: snap(w.x), y: snap(w.y) };
+      setRoomDraft({ x: roomStart.current.x, y: roomStart.current.y, w: 0, h: 0 });
+    }
   };
 
-  const endPan = () => {
-    panStart.current = null;
-    setDragging(false);
+  const handlePointerMove = () => {
+    const w = toWorld();
+    if (!w) return;
+    setCursor(w);
+
+    if (panStart.current) {
+      const p = stageRef.current!.getPointerPosition()!;
+      setCamera({ x: panStart.current.camX + (p.x - panStart.current.px), y: panStart.current.camY + (p.y - panStart.current.py) });
+      return;
+    }
+
+    if (liveStroke.current) {
+      liveStroke.current.points.push(w.x, w.y);
+      const line = liveLineRef.current;
+      if (line) {
+        line.points(liveStroke.current.points);
+        line.getLayer()?.batchDraw();
+      }
+      return;
+    }
+
+    if (roomStart.current) {
+      const snap = (v: number) => Math.round(v / gridCell) * gridCell;
+      const ex = snap(w.x);
+      const ey = snap(w.y);
+      const sx = roomStart.current.x;
+      const sy = roomStart.current.y;
+      setRoomDraft({ x: Math.min(sx, ex), y: Math.min(sy, ey), w: Math.abs(ex - sx), h: Math.abs(ey - sy) });
+    }
   };
 
-  const cursorClass = isPanTool
-    ? dragging
-      ? 'cursor-grabbing'
-      : 'cursor-grab'
-    : 'cursor-default';
+  const handlePointerUp = () => {
+    if (panStart.current) {
+      panStart.current = null;
+      setDragging(false);
+      return;
+    }
+    if (liveStroke.current) finalizeStroke();
+    else if (roomStart.current) finalizeRoom();
+  };
 
+  const handlePointerLeave = () => {
+    if (panStart.current) {
+      panStart.current = null;
+      setDragging(false);
+    }
+    if (liveStroke.current) finalizeStroke();
+    else if (roomStart.current) finalizeRoom();
+    setCursor(null);
+  };
+
+  // --- odvozené ---
+  const isDrawingTool = (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) || (mode === 'dungeon' && tool === 'room');
+  const cursorClass = isPanTool ? (dragging ? 'cursor-grabbing' : 'cursor-grab') : isDrawingTool ? 'cursor-crosshair' : 'cursor-default';
   const gridColor = mode === 'world' ? 'rgba(180,210,230,0.06)' : 'rgba(150,170,210,0.10)';
-  const sceneEmpty = true; // ve fázi F2 je scéna vždy prázdná → ukaž uvítací hint
+  const sceneEmpty = mode === 'world' ? terrainOrder.length === 0 : roomOrder.length === 0;
 
   return (
-    <div ref={containerRef} className={`absolute inset-0 ${cursorClass}`}>
+    <div ref={containerRef} className={`absolute inset-0 touch-none ${cursorClass}`}>
       {size.width > 0 && size.height > 0 && (
         <Stage
           ref={stageRef}
@@ -207,54 +265,111 @@ export default function MapCanvas() {
           scaleX={camera.scale}
           scaleY={camera.scale}
           onWheel={handleWheel}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={endPan}
-          onMouseLeave={() => {
-            endPan();
-            setCursor(null);
-          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
           onContextMenu={(e) => e.evt.preventDefault()}
         >
-          <GridLayer
-            view={view}
-            baseCell={mode === 'dungeon' ? gridCell : 256}
-            scale={camera.scale}
-            color={gridColor}
-          />
-          {/* Křížek v počátku (0,0) pro orientaci při posunu */}
+          {mode === 'world' ? (
+            <>
+              {/* Voda — vlastní vrstva pod terénem (klíč pro maskování v F4) */}
+              <Layer listening={false}>
+                <Rect x={view.left} y={view.top} width={view.right - view.left} height={view.bottom - view.top} fill={waterColor} perfectDrawEnabled={false} />
+              </Layer>
+              {/* Terén — pevnina (land) a mazání (erase = destination-out) */}
+              <Layer listening={false}>
+                {terrainOrder.map((id) => {
+                  const s = terrainStrokes[id];
+                  if (!s || s.kind === 'texture') return null;
+                  return (
+                    <Line
+                      key={id}
+                      points={s.points}
+                      stroke={s.kind === 'erase' ? '#000' : landColor}
+                      strokeWidth={s.size}
+                      lineCap="round"
+                      lineJoin="round"
+                      globalCompositeOperation={s.kind === 'erase' ? 'destination-out' : undefined}
+                      listening={false}
+                      perfectDrawEnabled={false}
+                    />
+                  );
+                })}
+                {stroking && liveStroke.current && (
+                  <Line
+                    ref={liveLineRef}
+                    points={liveStroke.current.points}
+                    stroke={liveStroke.current.kind === 'erase' ? '#000' : landColor}
+                    strokeWidth={liveStroke.current.size}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation={liveStroke.current.kind === 'erase' ? 'destination-out' : undefined}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                )}
+              </Layer>
+            </>
+          ) : (
+            // Dungeon — místnosti (floor + zeď) a živý náhled
+            <Layer listening={false}>
+              {roomOrder.map((id) => {
+                const r = rooms[id];
+                if (!r) return null;
+                return (
+                  <Rect
+                    key={id}
+                    x={r.x}
+                    y={r.y}
+                    width={r.width}
+                    height={r.height}
+                    fill="rgba(58,65,80,0.96)"
+                    stroke="#cdb386"
+                    strokeWidth={2 / camera.scale}
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                );
+              })}
+              {roomDraft && (roomDraft.w > 0 || roomDraft.h > 0) && (
+                <Rect
+                  x={roomDraft.x}
+                  y={roomDraft.y}
+                  width={roomDraft.w}
+                  height={roomDraft.h}
+                  fill="rgba(201,145,63,0.18)"
+                  stroke="#c9913f"
+                  strokeWidth={2 / camera.scale}
+                  dash={[8 / camera.scale, 4 / camera.scale]}
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+              )}
+            </Layer>
+          )}
+
+          <GridLayer view={view} baseCell={mode === 'dungeon' ? gridCell : 256} scale={camera.scale} color={gridColor} />
+
+          {/* Overlay: počátek + ghost štětce */}
           <Layer listening={false}>
-            <Line
-              points={[-12 / camera.scale, 0, 12 / camera.scale, 0]}
-              stroke="rgba(201,145,63,0.5)"
-              strokeWidth={1 / camera.scale}
-              perfectDrawEnabled={false}
-            />
-            <Line
-              points={[0, -12 / camera.scale, 0, 12 / camera.scale]}
-              stroke="rgba(201,145,63,0.5)"
-              strokeWidth={1 / camera.scale}
-              perfectDrawEnabled={false}
-            />
+            <Line points={[-12 / camera.scale, 0, 12 / camera.scale, 0]} stroke="rgba(201,145,63,0.5)" strokeWidth={1 / camera.scale} perfectDrawEnabled={false} />
+            <Line points={[0, -12 / camera.scale, 0, 12 / camera.scale]} stroke="rgba(201,145,63,0.5)" strokeWidth={1 / camera.scale} perfectDrawEnabled={false} />
+            <BrushCursor />
           </Layer>
         </Stage>
       )}
 
-      {/* Uvítací overlay (HTML → ostrý, nezávislý na zoomu) */}
       {sceneEmpty && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="max-w-sm text-center">
-            <div className="font-display text-2xl text-parchment/70">
-              {mode === 'world' ? 'Namaluj svět' : 'Vykresli dungeon'}
-            </div>
+            <div className="font-display text-2xl text-parchment/70">{mode === 'world' ? 'Namaluj svět' : 'Vykresli dungeon'}</div>
             <p className="mt-2 text-sm text-stone-400/70">
               {mode === 'world'
-                ? 'Vyber štětec Pevnina (B) a začni malovat souš. Textury, voda a maskování přijdou v dalších fázích.'
-                : 'Vyber nástroj Místnost (R) a kresli na grid. Procedurální generátor přijde později.'}
+                ? 'Vyber štětec Pevnina (B) a táhni po vodě. Gumou (E) maska zase mizí. Textury a maskování přijdou v další fázi.'
+                : 'Vyber nástroj Místnost (R) a táhni — vznikne místnost zarovnaná na grid.'}
             </p>
-            <p className="mt-3 text-xs text-ink-400">
-              Tab přepíná World/Dungeon · Space+táhni posouvá · kolečko zoomuje
-            </p>
+            <p className="mt-3 text-xs text-ink-400">Tab přepíná World/Dungeon · Space+táhni posouvá · kolečko zoomuje · Ctrl+Z zpět</p>
           </div>
         </div>
       )}

@@ -43,13 +43,11 @@ Pokud nechceš stavět instalátor, dvakrát klikni na **`Spustit-Cartographer.b
 (napoprvé doinstaluje a sestaví, pak spustí). Pravým tlačítkem na soubor →
 *Odeslat → Plocha (vytvořit zástupce)*.
 
-### macOS / Linux
+### macOS
 
 ```bash
 npm install
 npm run dist:mac     # → dist/Cartographer-…​.dmg
-npm run dist:linux   # → dist/Cartographer-…​.AppImage
-# nebo bez balení rovnou spustit:  ./run-app.sh
 ```
 
 ### Rychlé spuštění desktopu z vývojového prostředí
@@ -71,8 +69,8 @@ npm run preview      # lokální náhled produkčního buildu
 
 - [x] **F1** — Technický design (PRD): `docs/PRD.md`
 - [x] **F2** — Skeleton: layout (TopBar / ToolRail / panel / StatusBar), Konva plátno s pan/zoom, přepínač World/Dungeon, Zustand store + patch-historie
-- [x] **F2.5** — Desktop balení: Electron wrapper (offline, interní server), generátor ikony, electron-builder pro Windows/macOS/Linux, launchery
-- [ ] **F3** — Kreslicí engine: Land Brush, Eraser, Room tool, Undo/Redo na každou akci, autosave do IndexedDB
+- [x] **F2.5** — Desktop balení: Electron wrapper (offline, interní server), generátor ikony, electron-builder pro Windows/macOS, launcher
+- [x] **F3** — Kreslicí engine: Land Brush + Eraser (World), Room tool (Dungeon), Undo/Redo na každou akci (patch-historie), autosave do IndexedDB
 - [ ] **F4** — Landmass Masking (`globalCompositeOperation`) + texturový štětec
 - [ ] **F5** — Asset tool (drag-and-drop import), procedurální generátor dungeonu, export PNG/WebP do 8K
 

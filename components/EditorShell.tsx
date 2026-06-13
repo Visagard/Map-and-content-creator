@@ -6,6 +6,7 @@ import ToolRail from './ToolRail';
 import ContextPanel from './ContextPanel';
 import StatusBar from './StatusBar';
 import { useKeyboardShortcuts } from '@/lib/useKeyboardShortcuts';
+import { useAutosave } from '@/lib/useAutosave';
 import { useEditorStore } from '@/store/editorStore';
 
 // Konva potřebuje `window` → načítáme jen na klientu, nikdy při SSR/exportu.
@@ -20,6 +21,7 @@ const MapCanvas = dynamic(() => import('./canvas/MapCanvas'), {
 
 export default function EditorShell() {
   useKeyboardShortcuts();
+  useAutosave();
   const mode = useEditorStore((s) => s.mode);
 
   return (
