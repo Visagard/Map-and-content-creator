@@ -42,6 +42,7 @@ export default function TopBar() {
   const redo = useDocumentStore((s) => s.redo);
   const canUndo = useDocumentStore((s) => s.past.length > 0);
   const canRedo = useDocumentStore((s) => s.future.length > 0);
+  const setExportOpen = useEditorStore((s) => s.setExportOpen);
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-white/5 bg-ink-900 px-3">
@@ -63,9 +64,9 @@ export default function TopBar() {
         </IconButton>
         <div className="mx-1 h-5 w-px bg-white/10" />
         <button
-          disabled
-          title="Export PNG/WebP (přijde ve fázi F5)"
-          className="flex items-center gap-1.5 rounded-md bg-ink-700 px-3 py-1.5 text-sm text-stone-500 opacity-60"
+          onClick={() => setExportOpen(true)}
+          title="Export do PNG/WebP (Ctrl+E)"
+          className="flex items-center gap-1.5 rounded-md bg-ember px-3 py-1.5 text-sm font-medium text-obsidian transition-opacity hover:opacity-90"
         >
           <Download size={15} />
           Export

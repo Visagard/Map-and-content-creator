@@ -31,6 +31,11 @@ export function useKeyboardShortcuts() {
         doc.redo();
         return;
       }
+      if (meta && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        editor.setExportOpen(true);
+        return;
+      }
       if (meta) return; // ostatní Ctrl/Cmd kombinace neřešíme
 
       // Smazání vybraných prvků
@@ -43,9 +48,10 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Zrušení výběru
+      // Escape: zavři export, jinak zruš výběr
       if (e.key === 'Escape') {
-        editor.clearSelection();
+        if (editor.exportOpen) editor.setExportOpen(false);
+        else editor.clearSelection();
         return;
       }
 

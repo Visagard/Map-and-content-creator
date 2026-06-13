@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { Trash2, RotateCcw, RotateCw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Trash2, RotateCcw, RotateCw, Wand2 } from 'lucide-react';
 import { useEditorStore, BRUSH_LIMITS } from '@/store/editorStore';
 import { useDocumentStore } from '@/store/documentStore';
 import { toolById } from '@/lib/tools';
 import { TEXTURES, getTextureCanvas, type TextureDef } from '@/lib/textures';
+import { generateDungeon } from '@/lib/dungeonGenerator';
 import AssetPanel from './AssetPanel';
 
 function PanelSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -76,6 +77,55 @@ function TextureSettings() {
         ))}
       </div>
       <p className="mt-2 text-xs text-ink-400">Textura se nanáší jen na pevninu — do vody se nepřelije.</p>
+    </PanelSection>
+  );
+}
+
+function DungeonGenerator() {
+  const apply = useDocumentStore((s) => s.apply);
+  const cell = useDocumentStore((s) => s.doc.dungeon.grid.cellSize);
+  const [count, setCount] = useState(10);
+
+  const generate = () => {
+    const { rooms, corridors } = generateDungeon({ roomCount: count, cell });
+    apply('Generování dungeonu', (d) => {
+      d.dungeon.rooms = {};
+      d.dungeon.roomOrder = [];
+      d.dungeon.corridors = {};
+      d.dungeon.corridorOrder = [];
+      for (const r of rooms) {
+        d.dungeon.rooms[r.id] = r;
+        d.dungeon.roomOrder.push(r.id);
+      }
+      for (const c of corridors) {
+        d.dungeon.corridors[c.id] = c;
+        d.dungeon.corridorOrder.push(c.id);
+      }
+    });
+  };
+
+  return (
+    <PanelSection title="Generátor dungeonu">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-stone-400">Počet místností</span>
+        <span className="tabular-nums text-stone-200">{count}</span>
+      </div>
+      <input
+        type="range"
+        min={4}
+        max={24}
+        value={count}
+        onChange={(e) => setCount(Number(e.target.value))}
+        className="range-ember mt-2"
+      />
+      <button
+        onClick={generate}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-md bg-ember py-2 text-sm font-semibold text-obsidian transition-opacity hover:opacity-90"
+      >
+        <Wand2 size={15} />
+        Vygenerovat
+      </button>
+      <p className="mt-2 text-xs text-ink-400">Nahradí stávající místnosti a chodby. Vratné přes Ctrl+Z.</p>
     </PanelSection>
   );
 }
@@ -158,6 +208,7 @@ export default function ContextPanel() {
       {showsBrush && <BrushSettings />}
       {tool === 'textureBrush' && <TextureSettings />}
       {tool === 'select' && <SelectionProperties />}
+      {mode === 'dungeon' && <DungeonGenerator />}
 
       <PanelSection title={mode === 'world' ? 'World Mode' : 'Dungeon Mode'}>
         <p className="text-xs leading-relaxed text-ink-400">

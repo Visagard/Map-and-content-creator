@@ -106,6 +106,8 @@ export default function MapCanvas() {
   const gridCell = useDocumentStore((s) => s.doc.dungeon.grid.cellSize);
   const rooms = useDocumentStore((s) => s.doc.dungeon.rooms);
   const roomOrder = useDocumentStore((s) => s.doc.dungeon.roomOrder);
+  const corridors = useDocumentStore((s) => s.doc.dungeon.corridors);
+  const corridorOrder = useDocumentStore((s) => s.doc.dungeon.corridorOrder);
 
   // --- interaction state ---
   const spaceHeld = useSpaceHeld();
@@ -419,8 +421,24 @@ export default function MapCanvas() {
               </Layer>
             </>
           ) : (
-            // Dungeon — místnosti (floor + zeď) a živý náhled
+            // Dungeon — chodby (pod místnostmi) + místnosti (floor + zeď) + živý náhled
             <Layer listening={false}>
+              {corridorOrder.map((id) => {
+                const c = corridors[id];
+                if (!c) return null;
+                return (
+                  <Line
+                    key={id}
+                    points={c.points}
+                    stroke="rgba(58,65,80,0.96)"
+                    strokeWidth={c.width}
+                    lineCap="round"
+                    lineJoin="round"
+                    listening={false}
+                    perfectDrawEnabled={false}
+                  />
+                );
+              })}
               {roomOrder.map((id) => {
                 const r = rooms[id];
                 if (!r) return null;

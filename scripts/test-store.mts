@@ -1,5 +1,6 @@
 // Rychlý test patch-historie documentStore (apply / undo / redo / napříč módy).
 import { useDocumentStore } from '../store/documentStore';
+import { generateDungeon } from '../lib/dungeonGenerator';
 
 const s = () => useDocumentStore.getState();
 let failed = false;
@@ -71,6 +72,27 @@ assert(s().doc.world.assetOrder.length === 2, 'deleteAssets: undo obnovil');
 s().removeByAssetId('usr:img1');
 assert(!s().doc.world.assets['a2'] && s().doc.world.assetOrder.length === 1, 'removeByAssetId: osiřelý prvek odstraněn');
 assert(!!s().doc.world.assets['a1'], 'removeByAssetId: ostatní prvky zůstaly');
+
+// ---- Generátor dungeonu ----
+const g = generateDungeon({ roomCount: 10, cell: 48, seed: 42 });
+assert(g.rooms.length > 0 && g.rooms.length <= 10, 'generátor: počet místností v limitu');
+assert(g.rooms.length < 2 || g.corridors.length === g.rooms.length - 1, 'generátor: MST chodby = rooms-1');
+let overlap = false;
+for (let i = 0; i < g.rooms.length; i++) {
+  for (let j = i + 1; j < g.rooms.length; j++) {
+    const a = g.rooms[i];
+    const b = g.rooms[j];
+    if (!(a.x >= b.x + b.width || a.x + a.width <= b.x || a.y >= b.y + b.height || a.y + a.height <= b.y)) overlap = true;
+  }
+}
+assert(!overlap, 'generátor: místnosti se nepřekrývají');
+assert(
+  g.rooms.every((r) => r.x % 48 === 0 && r.y % 48 === 0 && r.width % 48 === 0 && r.height % 48 === 0),
+  'generátor: místnosti zarovnané na grid',
+);
+const g2 = generateDungeon({ roomCount: 10, cell: 48, seed: 42 });
+const geom = (x: typeof g) => JSON.stringify(x.rooms.map((r) => [r.x, r.y, r.width, r.height]));
+assert(geom(g) === geom(g2), 'generátor: deterministický se stejným seedem');
 
 console.log(failed ? '\nNĚKTERÉ TESTY SELHALY' : '\nVŠECHNY TESTY PROŠLY ✓');
 process.exit(failed ? 1 : 0);

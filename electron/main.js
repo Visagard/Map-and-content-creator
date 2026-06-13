@@ -168,6 +168,25 @@ async function createWindow() {
           })()
         `);
         console.log(`[smoke] masking ${JSON.stringify(mask)}`);
+
+        // Test exportu (svět má pevninu+texturu) + generátoru dungeonu + exportu dungeonu
+        const exp = await mainWindow.webContents.executeJavaScript(`
+          (async () => {
+            const doc = window.__doc, exportMap = window.__exportMap;
+            if (!exportMap) return { err: 'export nedostupný' };
+            const world = await exportMap(doc.getState().doc, 'world', { longEdge: 256, mime: 'image/png' });
+            // vygeneruj dungeon přes store-friendly cestu: vlož pár místností + chodbu
+            doc.getState().apply('gen', (d) => {
+              d.dungeon.rooms = { r1:{id:'r1',x:0,y:0,width:96,height:96}, r2:{id:'r2',x:240,y:0,width:96,height:96} };
+              d.dungeon.roomOrder = ['r1','r2'];
+              d.dungeon.corridors = { c1:{id:'c1',points:[48,48,288,48],width:32} };
+              d.dungeon.corridorOrder = ['c1'];
+            });
+            const dungeon = await exportMap(doc.getState().doc, 'dungeon', { longEdge: 256, mime: 'image/webp' });
+            return { worldW: world.width, worldH: world.height, worldBytes: world.blob.size, worldType: world.blob.type, dungBytes: dungeon.blob.size, dungType: dungeon.blob.type };
+          })()
+        `);
+        console.log(`[smoke] export ${JSON.stringify(exp)}`);
         setTimeout(() => app.quit(), 400);
       } catch (e) {
         console.log('[smoke] eval error', e);

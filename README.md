@@ -72,8 +72,8 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F2.5** — Desktop balení: Electron wrapper (offline, interní server), generátor ikony, electron-builder pro Windows/macOS, launcher
 - [x] **F3** — Kreslicí engine: Land Brush + Eraser (World), Room tool (Dungeon), Undo/Redo na každou akci (patch-historie), autosave do IndexedDB
 - [x] **F3.5** — Knihovna prvků: ~290 vestavěných prvků (8 kategorií) s vyhledáváním podle názvu, pokládání na mapu, výběr/posun/otáčení/zvětšení/mazání, drag-and-drop import vlastních obrázků z disku do IndexedDB, sdílené bitmapy pro výkon
-- [ ] **F4** — Landmass Masking (`globalCompositeOperation`) + texturový štětec
-- [ ] **F5** — Procedurální generátor dungeonu, export PNG/WebP do 8K
+- [x] **F4** — Landmass Masking (`globalCompositeOperation: source-atop`) + 12 procedurálních textur; textura drží jen na pevnině
+- [x] **F5** — Procedurální generátor dungeonu (MST místnosti+chodby) + export PNG/WebP do 8K
 
 ## Ovládání
 
@@ -83,5 +83,7 @@ npm run preview      # lokální náhled produkčního buildu
 | `V` / `B` / `T` / `E` / `R` / `A` / `H` | Výběr nástrojů |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Zpět / Vpřed |
 | `[` / `]` | Zmenšit / zvětšit štětec |
+| `Del` / `Esc` | Smazat výběr / zrušit výběr |
+| `Ctrl+E` | Export do PNG/WebP |
 | `Space` + táhnutí | Posun plátna |
 | Kolečko myši | Zoom ke kurzoru |

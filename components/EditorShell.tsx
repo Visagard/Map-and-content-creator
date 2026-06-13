@@ -5,6 +5,7 @@ import TopBar from './TopBar';
 import ToolRail from './ToolRail';
 import ContextPanel from './ContextPanel';
 import StatusBar from './StatusBar';
+import ExportDialog from './ExportDialog';
 import { useEffect } from 'react';
 import { useKeyboardShortcuts } from '@/lib/useKeyboardShortcuts';
 import { useAutosave } from '@/lib/useAutosave';
@@ -32,11 +33,15 @@ export default function EditorShell() {
     useAssetLibStore.getState().loadAll();
   }, []);
 
-  // Testovací hák pro smoke (jen s ?smoke v URL) — zpřístupní store pro ověření maskování
+  // Testovací hák pro smoke (jen s ?smoke v URL) — zpřístupní store + export pro ověření
   useEffect(() => {
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('smoke')) {
-      (window as unknown as Record<string, unknown>).__doc = useDocumentStore;
-      (window as unknown as Record<string, unknown>).__editor = useEditorStore;
+      const w = window as unknown as Record<string, unknown>;
+      w.__doc = useDocumentStore;
+      w.__editor = useEditorStore;
+      import('@/lib/exportMap').then((m) => {
+        w.__exportMap = m.exportMap;
+      });
     }
   }, []);
 
@@ -60,6 +65,7 @@ export default function EditorShell() {
         <ContextPanel />
       </div>
       <StatusBar />
+      <ExportDialog />
     </div>
   );
 }
