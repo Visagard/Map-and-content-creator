@@ -75,6 +75,7 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F4** — Landmass Masking (`globalCompositeOperation: source-atop`) + 12 procedurálních textur; textura drží jen na pevnině
 - [x] **F5** — Procedurální generátor dungeonu (MST místnosti+chodby) + export PNG/WebP do 8K
 - [x] **F6** — Profesionální grafika: ~38 vektorových assetů kreslených v kódu (stínované „stampy" jako Inkarnate/Dungeon Scrawl), malované textury (měkké skvrny + šum), pobřeží (hloubkový stín vody) a Dungeon-Scrawl vzhled (světlá podlaha, tučné zdi, mřížka na podlaze)
+- [x] **F7** — Inkarnate workflow: texturový štětec s krytím a měkkostí okraje (plynulé prolínání biomů), ostřejší a detailnější vykreslení (assety/emoji ve vyšším rozlišení, vyhlazování), jemná vinětace v exportu
 
 ## Ovládání
 

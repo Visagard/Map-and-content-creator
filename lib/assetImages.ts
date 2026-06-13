@@ -5,7 +5,7 @@ const emojiCache = new Map<string, HTMLCanvasElement>();
 const EMOJI_FONT =
   '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif';
 
-export function getEmojiCanvas(emoji: string, px = 160): HTMLCanvasElement {
+export function getEmojiCanvas(emoji: string, px = 224): HTMLCanvasElement {
   const key = `${emoji}@${px}`;
   const hit = emojiCache.get(key);
   if (hit) return hit;

@@ -11,7 +11,7 @@ export interface Camera {
 interface EditorState {
   mode: EditorMode;
   tool: ToolId;
-  brush: { size: number; textureId: string | null };
+  brush: { size: number; textureId: string | null; opacity: number; softness: number };
   camera: Camera;
   selection: string[];
   // Aktuálně vybraný prvek z katalogu k pokládání (Asset tool)
@@ -25,6 +25,8 @@ interface EditorState {
   setTool: (tool: ToolId) => void;
   setBrushSize: (size: number) => void;
   setBrushTexture: (textureId: string | null) => void;
+  setBrushOpacity: (opacity: number) => void;
+  setBrushSoftness: (softness: number) => void;
   setCamera: (camera: Partial<Camera>) => void;
   resetCamera: () => void;
   setSelection: (ids: string[]) => void;
@@ -47,7 +49,7 @@ const clampBrush = (n: number) => Math.min(BRUSH_MAX, Math.max(BRUSH_MIN, Math.r
 export const useEditorStore = create<EditorState>((set, get) => ({
   mode: 'world',
   tool: 'landBrush',
-  brush: { size: 64, textureId: 'grass' },
+  brush: { size: 64, textureId: 'grass', opacity: 1, softness: 0.35 },
   camera: { x: 0, y: 0, scale: 1 },
   selection: [],
   stampAssetId: null,
@@ -67,6 +69,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setTool: (tool) => set({ tool }),
   setBrushSize: (size) => set((s) => ({ brush: { ...s.brush, size: clampBrush(size) } })),
   setBrushTexture: (textureId) => set((s) => ({ brush: { ...s.brush, textureId } })),
+  setBrushOpacity: (opacity) =>
+    set((s) => ({ brush: { ...s.brush, opacity: Math.min(1, Math.max(0.05, opacity)) } })),
+  setBrushSoftness: (softness) =>
+    set((s) => ({ brush: { ...s.brush, softness: Math.min(1, Math.max(0, softness)) } })),
 
   setCamera: (camera) => set((s) => ({ camera: { ...s.camera, ...camera } })),
   resetCamera: () => set({ camera: { x: 0, y: 0, scale: 1 } }),

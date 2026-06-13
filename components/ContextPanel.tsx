@@ -69,6 +69,10 @@ function TextureSwatch({ def, active, onClick }: { def: TextureDef; active: bool
 function TextureSettings() {
   const textureId = useEditorStore((s) => s.brush.textureId);
   const setBrushTexture = useEditorStore((s) => s.setBrushTexture);
+  const opacity = useEditorStore((s) => s.brush.opacity);
+  const softness = useEditorStore((s) => s.brush.softness);
+  const setBrushOpacity = useEditorStore((s) => s.setBrushOpacity);
+  const setBrushSoftness = useEditorStore((s) => s.setBrushSoftness);
   return (
     <PanelSection title="Textura">
       <div className="grid grid-cols-4 gap-1.5">
@@ -76,7 +80,36 @@ function TextureSettings() {
           <TextureSwatch key={t.id} def={t} active={textureId === t.id} onClick={() => setBrushTexture(t.id)} />
         ))}
       </div>
-      <p className="mt-2 text-xs text-ink-400">Textura se nanáší jen na pevninu — do vody se nepřelije.</p>
+
+      <div className="mt-3 flex items-center justify-between text-sm">
+        <span className="text-stone-400">Krytí</span>
+        <span className="tabular-nums text-stone-200">{Math.round(opacity * 100)}%</span>
+      </div>
+      <input
+        type="range"
+        min={5}
+        max={100}
+        value={Math.round(opacity * 100)}
+        onChange={(e) => setBrushOpacity(Number(e.target.value) / 100)}
+        className="range-ember mt-1.5"
+      />
+
+      <div className="mt-3 flex items-center justify-between text-sm">
+        <span className="text-stone-400">Měkkost okraje</span>
+        <span className="tabular-nums text-stone-200">{Math.round(softness * 100)}%</span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={Math.round(softness * 100)}
+        onChange={(e) => setBrushSoftness(Number(e.target.value) / 100)}
+        className="range-ember mt-1.5"
+      />
+
+      <p className="mt-2 text-xs text-ink-400">
+        Textura se nanáší jen na pevninu. Měkkost prolíná biomy, krytí vrství postupně.
+      </p>
     </PanelSection>
   );
 }

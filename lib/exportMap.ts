@@ -162,6 +162,8 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
   canvas.height = ch;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Nepodařilo se vytvořit plátno pro export.');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   const applyWorldTransform = (c: CanvasRenderingContext2D) => c.setTransform(ratio, 0, 0, ratio, -minX * ratio, -minY * ratio);
   applyWorldTransform(ctx);
@@ -198,6 +200,8 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     tc.height = ch;
     const tx = tc.getContext('2d');
     if (!tx) throw new Error('Nepodařilo se vytvořit vrstvu terénu.');
+    tx.imageSmoothingEnabled = true;
+    tx.imageSmoothingQuality = 'high';
     applyWorldTransform(tx);
     for (const id of doc.world.terrainOrder) {
       const s = doc.world.terrainStrokes[id];
@@ -207,6 +211,12 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
         const pat = tx.createPattern(getTextureCanvas(s.textureId), 'repeat');
         if (pat) {
           tx.globalCompositeOperation = 'source-atop';
+          tx.globalAlpha = s.opacity ?? 1;
+          const soft = s.softness ?? 0;
+          if (soft > 0) {
+            const blur = soft * s.size * 0.45 * ratio;
+            if (blur > 0.5) tx.filter = `blur(${blur}px)`;
+          }
           tx.strokeStyle = pat;
           strokePath(tx, s.points, s.size);
         }
@@ -223,6 +233,16 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     ctx.drawImage(tc, 0, 0);
     ctx.restore();
     drawAssets(ctx, doc.world);
+    // Jemná vinětace → „dokončený" vzhled mapy
+    if (opts.background !== 'transparent') {
+      const ccx = minX + W / 2;
+      const ccy = minY + H / 2;
+      const vg = ctx.createRadialGradient(ccx, ccy, Math.min(W, H) * 0.35, ccx, ccy, Math.max(W, H) * 0.72);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.26)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(minX, minY, W, H);
+    }
   } else {
     if (opts.background !== 'transparent') {
       ctx.fillStyle = '#0e0f13';

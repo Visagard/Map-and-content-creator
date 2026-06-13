@@ -743,7 +743,7 @@ export function artById(id: string): ArtAsset | undefined {
 }
 
 const cache = new Map<string, HTMLCanvasElement>();
-export function getArtCanvas(id: string, px = 256): HTMLCanvasElement | null {
+export function getArtCanvas(id: string, px = 384): HTMLCanvasElement | null {
   const key = `${id}@${px}`;
   const hit = cache.get(key);
   if (hit) return hit;

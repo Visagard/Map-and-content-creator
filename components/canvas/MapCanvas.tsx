@@ -82,6 +82,8 @@ interface LiveStroke {
   points: number[];
   size: number;
   textureId?: string;
+  opacity?: number;
+  softness?: number;
 }
 
 export default function MapCanvas() {
@@ -98,6 +100,8 @@ export default function MapCanvas() {
   const camera = useEditorStore((s) => s.camera);
   const brushSize = useEditorStore((s) => s.brush.size);
   const textureId = useEditorStore((s) => s.brush.textureId);
+  const brushOpacity = useEditorStore((s) => s.brush.opacity);
+  const brushSoftness = useEditorStore((s) => s.brush.softness);
   const setCamera = useEditorStore((s) => s.setCamera);
   const setCursor = useEditorStore((s) => s.setCursor);
   const stampAssetId = useEditorStore((s) => s.stampAssetId);
@@ -177,7 +181,7 @@ export default function MapCanvas() {
     apply(label, (d) => {
       d.world.terrainStrokes[id] =
         s.kind === 'texture'
-          ? { id, kind: 'texture', points: s.points, size: s.size, textureId: s.textureId! }
+          ? { id, kind: 'texture', points: s.points, size: s.size, textureId: s.textureId!, opacity: s.opacity, softness: s.softness }
           : { id, kind: s.kind, points: s.points, size: s.size };
       d.world.terrainOrder.push(id);
     });
@@ -256,7 +260,14 @@ export default function MapCanvas() {
       setStroking(true);
     } else if (mode === 'world' && tool === 'textureBrush') {
       if (!textureId) return;
-      liveStroke.current = { kind: 'texture', points: [w.x, w.y], size: brushSize, textureId };
+      liveStroke.current = {
+        kind: 'texture',
+        points: [w.x, w.y],
+        size: brushSize,
+        textureId,
+        opacity: brushOpacity,
+        softness: brushSoftness,
+      };
       setStroking(true);
     } else if (mode === 'dungeon' && tool === 'room') {
       const snap = (v: number) => Math.round(v / gridCell) * gridCell;
@@ -432,7 +443,16 @@ export default function MapCanvas() {
                 {terrainOrder.map((id) => {
                   const s = terrainStrokes[id];
                   if (!s || s.kind !== 'texture') return null;
-                  return <TextureStroke key={id} points={s.points} size={s.size} textureId={s.textureId} />;
+                  return (
+                    <TextureStroke
+                      key={id}
+                      points={s.points}
+                      size={s.size}
+                      textureId={s.textureId}
+                      opacity={s.opacity}
+                      softness={s.softness}
+                    />
+                  );
                 })}
                 {stroking && liveStroke.current && liveStroke.current.kind === 'texture' && (
                   <Shape
@@ -440,9 +460,10 @@ export default function MapCanvas() {
                     globalCompositeOperation="source-atop"
                     listening={false}
                     perfectDrawEnabled={false}
-                    sceneFunc={(ctx) => {
+                    sceneFunc={(ctx, shape) => {
                       const s = liveStroke.current;
-                      if (s && s.kind === 'texture') paintTextureStroke(ctx, s.points, s.size, s.textureId!);
+                      if (s && s.kind === 'texture')
+                        paintTextureStroke(ctx, shape, s.points, s.size, s.textureId!, s.opacity, s.softness);
                     }}
                   />
                 )}

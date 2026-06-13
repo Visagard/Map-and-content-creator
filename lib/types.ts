@@ -19,7 +19,15 @@ export type ToolId =
 export type TerrainStroke =
   | { id: string; kind: 'land'; points: number[]; size: number }
   | { id: string; kind: 'erase'; points: number[]; size: number }
-  | { id: string; kind: 'texture'; points: number[]; size: number; textureId: string };
+  | {
+      id: string;
+      kind: 'texture';
+      points: number[];
+      size: number;
+      textureId: string;
+      opacity?: number; // krytí tahu (0–1), default 1
+      softness?: number; // měkkost okraje (0–1) pro prolínání biomů, default 0
+    };
 
 export interface WorldScene {
   waterStyle: { color: string; textureId?: string };

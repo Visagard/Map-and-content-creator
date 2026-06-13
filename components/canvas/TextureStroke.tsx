@@ -7,15 +7,19 @@ import { getTextureCanvas } from '@/lib/textures';
 /**
  * Vykreslí texturovaný tah. Volá se uvnitř Konva sceneFunc, takže má aktivní
  * transformaci kamery (kreslíme ve world souřadnicích) i nastavené
- * globalCompositeOperation='source-atop' → tah se objeví jen tam, kde už je
- * neprůhledná pevnina, do vody se nepřelije. Pattern je v souřadnicích plátna,
- * takže sousední tahy stejné textury bezešvě navazují.
+ * globalCompositeOperation='source-atop' → tah se objeví jen na pevnině.
+ * `opacity` umožní postupné vrstvení biomů, `softness` rozostří okraj tahu
+ * (měkké prolínání biomů jako v Inkarnate). Feather je v world jednotkách,
+ * takže vypadá stejně při každém zoomu.
  */
 export function paintTextureStroke(
   context: Konva.Context,
+  shape: Konva.Shape,
   points: number[],
   size: number,
   textureId: string,
+  opacity = 1,
+  softness = 0,
 ): void {
   if (points.length < 2) return;
   const ctx = (context as unknown as { _context: CanvasRenderingContext2D })._context;
@@ -23,6 +27,13 @@ export function paintTextureStroke(
   if (!pattern) return;
 
   ctx.save();
+  ctx.globalAlpha = opacity;
+  if (softness > 0) {
+    const scale = shape.getStage()?.scaleX() ?? 1;
+    const pr = shape.getLayer()?.getCanvas()?.getPixelRatio?.() ?? 1;
+    const blur = softness * size * 0.45 * scale * pr; // world → device px
+    if (blur > 0.5) ctx.filter = `blur(${blur}px)`;
+  }
   ctx.strokeStyle = pattern;
   ctx.lineWidth = size;
   ctx.lineCap = 'round';
@@ -30,7 +41,7 @@ export function paintTextureStroke(
   ctx.beginPath();
   ctx.moveTo(points[0], points[1]);
   for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
-  if (points.length <= 2) ctx.lineTo(points[0] + 0.01, points[1] + 0.01); // klik = tečka
+  if (points.length <= 2) ctx.lineTo(points[0] + 0.01, points[1] + 0.01);
   ctx.stroke();
   ctx.restore();
 }
@@ -39,17 +50,21 @@ export default function TextureStroke({
   points,
   size,
   textureId,
+  opacity = 1,
+  softness = 0,
 }: {
   points: number[];
   size: number;
   textureId: string;
+  opacity?: number;
+  softness?: number;
 }) {
   return (
     <Shape
       globalCompositeOperation="source-atop"
       listening={false}
       perfectDrawEnabled={false}
-      sceneFunc={(ctx) => paintTextureStroke(ctx, points, size, textureId)}
+      sceneFunc={(ctx, shape) => paintTextureStroke(ctx, shape, points, size, textureId, opacity, softness)}
     />
   );
 }
