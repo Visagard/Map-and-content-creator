@@ -1,6 +1,6 @@
 'use client';
 
-import { Undo2, Redo2, Download, Compass, Map as MapIcon, Mountain } from 'lucide-react';
+import { Undo2, Redo2, Download, Compass, Map as MapIcon, Mountain, HelpCircle } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { useDocumentStore } from '@/store/documentStore';
 import type { EditorMode } from '@/lib/types';
@@ -43,6 +43,7 @@ export default function TopBar() {
   const canUndo = useDocumentStore((s) => s.past.length > 0);
   const canRedo = useDocumentStore((s) => s.future.length > 0);
   const setExportOpen = useEditorStore((s) => s.setExportOpen);
+  const setHelpOpen = useEditorStore((s) => s.setHelpOpen);
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-white/5 bg-ink-900 px-3">
@@ -61,6 +62,9 @@ export default function TopBar() {
         </IconButton>
         <IconButton onClick={redo} disabled={!canRedo} title="Vpřed (Ctrl+Shift+Z)">
           <Redo2 size={17} />
+        </IconButton>
+        <IconButton onClick={() => setHelpOpen(true)} title="Klávesové zkratky (?)">
+          <HelpCircle size={17} />
         </IconButton>
         <div className="mx-1 h-5 w-px bg-white/10" />
         <button

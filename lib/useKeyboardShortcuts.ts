@@ -48,9 +48,17 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Escape: zavři export, jinak zruš výběr
+      // Nápověda zkratek
+      if (e.key === '?') {
+        e.preventDefault();
+        editor.setHelpOpen(!editor.helpOpen);
+        return;
+      }
+
+      // Escape: zavři dialogy, jinak zruš výběr
       if (e.key === 'Escape') {
-        if (editor.exportOpen) editor.setExportOpen(false);
+        if (editor.helpOpen) editor.setHelpOpen(false);
+        else if (editor.exportOpen) editor.setExportOpen(false);
         else editor.clearSelection();
         return;
       }

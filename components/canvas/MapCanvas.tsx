@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Minus, Maximize2, Frame } from 'lucide-react';
 import Konva from 'konva';
 import { Stage, Layer, Line, Rect, Shape } from 'react-konva';
 import { useEditorStore } from '@/store/editorStore';
@@ -11,6 +12,8 @@ import AssetLayer from './AssetLayer';
 import LabelLayer from './LabelLayer';
 import TextureStroke, { paintTextureStroke, BaseGround } from './TextureStroke';
 import { computeDungeonGeometry, drawDungeon } from '@/lib/dungeonRender';
+import { computeBounds } from '@/lib/exportMap';
+import { getSeaShimmer } from '@/lib/textures';
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const SCALE_MIN = 0.05;
@@ -21,7 +24,8 @@ const SCALE_MAX = 16;
 const COAST_BANDS = [
   { w: 46, color: 'rgba(6,20,32,0.55)' },
   { w: 26, color: 'rgba(22,58,82,0.5)' },
-  { w: 11, color: 'rgba(74,128,150,0.5)' },
+  { w: 12, color: 'rgba(74,128,150,0.5)' },
+  { w: 4, color: 'rgba(214,196,150,0.6)' }, // písčitá pláž u břehu
 ];
 const COAST_MAX = 46;
 
@@ -134,6 +138,9 @@ export default function MapCanvas() {
   const [stroking, setStroking] = useState(false);
   const roomStart = useRef<{ x: number; y: number } | null>(null);
   const [roomDraft, setRoomDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const corridorStart = useRef<{ x: number; y: number } | null>(null);
+  const [corridorDraft, setCorridorDraft] = useState<number[] | null>(null);
+  const corridorWidth = Math.max(Math.round(gridCell * 0.7), 16);
 
   // Měření kontejneru → rozměry Stage
   useEffect(() => {
@@ -206,6 +213,19 @@ export default function MapCanvas() {
     apply('Místnost', (d) => {
       d.dungeon.rooms[id] = { id, x: draft.x, y: draft.y, width: draft.w, height: draft.h };
       d.dungeon.roomOrder.push(id);
+    });
+  };
+
+  const finalizeCorridor = () => {
+    const pts = corridorDraft;
+    corridorStart.current = null;
+    setCorridorDraft(null);
+    if (!pts || pts.length < 4) return;
+    if (Math.abs(pts[2] - pts[0]) < 1 && Math.abs(pts[3] - pts[1]) < 1) return;
+    const id = crypto.randomUUID();
+    apply('Chodba', (d) => {
+      d.dungeon.corridors[id] = { id, points: pts, width: corridorWidth };
+      d.dungeon.corridorOrder.push(id);
     });
   };
 
@@ -295,6 +315,10 @@ export default function MapCanvas() {
       const snap = (v: number) => Math.round(v / gridCell) * gridCell;
       roomStart.current = { x: snap(w.x), y: snap(w.y) };
       setRoomDraft({ x: roomStart.current.x, y: roomStart.current.y, w: 0, h: 0 });
+    } else if (mode === 'dungeon' && tool === 'corridor') {
+      const snap = (v: number) => Math.round(v / gridCell) * gridCell;
+      corridorStart.current = { x: snap(w.x), y: snap(w.y) };
+      setCorridorDraft([corridorStart.current.x, corridorStart.current.y, corridorStart.current.x, corridorStart.current.y]);
     }
   };
 
@@ -327,6 +351,18 @@ export default function MapCanvas() {
       return;
     }
 
+    if (corridorStart.current) {
+      const snap = (v: number) => Math.round(v / gridCell) * gridCell;
+      let ex = snap(w.x);
+      let ey = snap(w.y);
+      const sx = corridorStart.current.x;
+      const sy = corridorStart.current.y;
+      if (Math.abs(ex - sx) >= Math.abs(ey - sy)) ey = sy;
+      else ex = sx;
+      setCorridorDraft([sx, sy, ex, ey]);
+      return;
+    }
+
     if (roomStart.current) {
       const snap = (v: number) => Math.round(v / gridCell) * gridCell;
       const ex = snap(w.x);
@@ -345,6 +381,7 @@ export default function MapCanvas() {
     }
     if (liveStroke.current) finalizeStroke();
     else if (roomStart.current) finalizeRoom();
+    else if (corridorStart.current) finalizeCorridor();
   };
 
   const handlePointerLeave = () => {
@@ -354,13 +391,38 @@ export default function MapCanvas() {
     }
     if (liveStroke.current) finalizeStroke();
     else if (roomStart.current) finalizeRoom();
+    else if (corridorStart.current) finalizeCorridor();
     setCursor(null);
+  };
+
+  // --- zoom ovládání ---
+  const zoomAround = (sx: number, sy: number, next: number) => {
+    const old = camera.scale;
+    const wx = (sx - camera.x) / old;
+    const wy = (sy - camera.y) / old;
+    setCamera({ scale: next, x: sx - wx * next, y: sy - wy * next });
+  };
+  const zoomBy = (factor: number) =>
+    zoomAround(size.width / 2, size.height / 2, clamp(camera.scale * factor, SCALE_MIN, SCALE_MAX));
+  const fitToContent = () => {
+    const b = computeBounds(useDocumentStore.getState().doc, mode);
+    if (!b || size.width === 0) {
+      setCamera({ x: size.width / 2, y: size.height / 2, scale: 1 });
+      return;
+    }
+    const pad = 80;
+    const W = b.maxX - b.minX + pad * 2;
+    const H = b.maxY - b.minY + pad * 2;
+    const scale = clamp(Math.min(size.width / W, size.height / H), SCALE_MIN, SCALE_MAX);
+    const cx = (b.minX + b.maxX) / 2;
+    const cy = (b.minY + b.maxY) / 2;
+    setCamera({ scale, x: size.width / 2 - cx * scale, y: size.height / 2 - cy * scale });
   };
 
   // --- odvozené ---
   const isDrawingTool =
     (mode === 'world' && (tool === 'landBrush' || tool === 'erase' || tool === 'textureBrush')) ||
-    (mode === 'dungeon' && tool === 'room');
+    (mode === 'dungeon' && (tool === 'room' || tool === 'corridor'));
   const cursorClass = isPanTool
     ? dragging
       ? 'cursor-grabbing'
@@ -406,6 +468,18 @@ export default function MapCanvas() {
               {/* Voda — vlastní vrstva pod terénem (klíč pro maskování v F4) */}
               <Layer listening={false}>
                 <Rect x={view.left} y={view.top} width={view.right - view.left} height={view.bottom - view.top} fill={waterColor} perfectDrawEnabled={false} />
+                <Shape
+                  listening={false}
+                  perfectDrawEnabled={false}
+                  sceneFunc={(ctx) => {
+                    const c = (ctx as unknown as { _context: CanvasRenderingContext2D })._context;
+                    const pat = c.createPattern(getSeaShimmer(), 'repeat');
+                    if (pat) {
+                      c.fillStyle = pat;
+                      c.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top);
+                    }
+                  }}
+                />
               </Layer>
               {/* Pobřeží — soustředné hloubkové pásy pod terénem (mělčina → hloubka) */}
               <Layer listening={false}>
@@ -542,6 +616,17 @@ export default function MapCanvas() {
                   perfectDrawEnabled={false}
                 />
               )}
+              {corridorDraft && (
+                <Line
+                  points={corridorDraft}
+                  stroke="rgba(201,145,63,0.45)"
+                  strokeWidth={corridorWidth}
+                  lineCap="round"
+                  lineJoin="round"
+                  listening={false}
+                  perfectDrawEnabled={false}
+                />
+              )}
             </Layer>
           )}
 
@@ -575,6 +660,37 @@ export default function MapCanvas() {
           </div>
         </div>
       )}
+
+      {/* Plovoucí ovládání zoomu */}
+      <div className="pointer-events-auto absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-lg bg-ink-800/90 text-stone-300 shadow-panel ring-1 ring-white/10 backdrop-blur">
+        <ZoomBtn title="Přiblížit (kolečko)" onClick={() => zoomBy(1.25)}>
+          <Plus size={16} />
+        </ZoomBtn>
+        <button
+          onClick={() => zoomAround(size.width / 2, size.height / 2, 1)}
+          title="Reset na 100 %"
+          className="border-y border-white/5 px-1 py-1 text-[10px] tabular-nums hover:bg-ink-700"
+        >
+          {Math.round(camera.scale * 100)}%
+        </button>
+        <ZoomBtn title="Oddálit (kolečko)" onClick={() => zoomBy(1 / 1.25)}>
+          <Minus size={16} />
+        </ZoomBtn>
+        <ZoomBtn title="Přizpůsobit obsahu" onClick={fitToContent}>
+          <Frame size={15} />
+        </ZoomBtn>
+        <ZoomBtn title="Reset pohledu" onClick={() => setCamera({ x: 0, y: 0, scale: 1 })}>
+          <Maximize2 size={14} />
+        </ZoomBtn>
+      </div>
     </div>
+  );
+}
+
+function ZoomBtn({ children, onClick, title }: { children: React.ReactNode; onClick: () => void; title: string }) {
+  return (
+    <button onClick={onClick} title={title} className="flex h-8 w-8 items-center justify-center hover:bg-ink-700">
+      {children}
+    </button>
   );
 }

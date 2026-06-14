@@ -6,6 +6,7 @@ import ToolRail from './ToolRail';
 import ContextPanel from './ContextPanel';
 import StatusBar from './StatusBar';
 import ExportDialog from './ExportDialog';
+import HelpDialog from './HelpDialog';
 import { useEffect } from 'react';
 import { useKeyboardShortcuts } from '@/lib/useKeyboardShortcuts';
 import { useAutosave } from '@/lib/useAutosave';
@@ -66,6 +67,7 @@ export default function EditorShell() {
       </div>
       <StatusBar />
       <ExportDialog />
+      <HelpDialog />
     </div>
   );
 }

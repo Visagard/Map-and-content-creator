@@ -56,6 +56,39 @@ function hexToRgba(hex: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+let seaShimmer: HTMLCanvasElement | null = null;
+/** Jemné vlnění moře — světlé/tmavé vodorovné šmouhy přes vodu (nízké krytí). */
+export function getSeaShimmer(): HTMLCanvasElement {
+  if (seaShimmer) return seaShimmer;
+  const px = 180;
+  const c = document.createElement('canvas');
+  c.width = px;
+  c.height = px;
+  const ctx = c.getContext('2d')!;
+  let seed = 7321;
+  const rnd = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 90; i++) {
+    const y = rnd() * px;
+    const x = rnd() * px;
+    const w = 16 + rnd() * 70;
+    const light = rnd() < 0.6;
+    ctx.strokeStyle = light
+      ? `rgba(180,212,236,${0.03 + rnd() * 0.05})`
+      : `rgba(8,28,46,${0.04 + rnd() * 0.06})`;
+    ctx.lineWidth = 1 + rnd() * 1.6;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + w * 0.5, y - 2 + rnd() * 4, x + w, y);
+    ctx.stroke();
+  }
+  seaShimmer = c;
+  return c;
+}
+
 export function getTextureCanvas(id: string): HTMLCanvasElement {
   const hit = cache.get(id);
   if (hit) return hit;

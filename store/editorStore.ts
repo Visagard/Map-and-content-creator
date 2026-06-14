@@ -17,6 +17,7 @@ interface EditorState {
   // Aktuálně vybraný prvek z katalogu k pokládání (Asset tool)
   stampAssetId: string | null;
   exportOpen: boolean;
+  helpOpen: boolean;
   // Efemérní pozice kurzoru ve world souřadnicích (pro StatusBar). Mimo historii.
   cursor: { x: number; y: number } | null;
 
@@ -35,6 +36,7 @@ interface EditorState {
   /** Vybere prvek z katalogu a přepne na Asset tool. */
   pickStampAsset: (assetId: string) => void;
   setExportOpen: (open: boolean) => void;
+  setHelpOpen: (open: boolean) => void;
 }
 
 const DEFAULT_TOOL: Record<EditorMode, ToolId> = {
@@ -54,6 +56,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selection: [],
   stampAssetId: null,
   exportOpen: false,
+  helpOpen: false,
   cursor: null,
 
   setMode: (mode) =>
@@ -82,6 +85,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setCursor: (pos) => set({ cursor: pos }),
   pickStampAsset: (assetId) => set({ stampAssetId: assetId, tool: 'asset', selection: [] }),
   setExportOpen: (open) => set({ exportOpen: open }),
+  setHelpOpen: (open) => set({ helpOpen: open }),
 }));
 
 export const BRUSH_LIMITS = { min: BRUSH_MIN, max: BRUSH_MAX };

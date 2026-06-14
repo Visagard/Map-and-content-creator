@@ -66,6 +66,24 @@ function TextureSwatch({ def, active, onClick }: { def: TextureDef; active: bool
   );
 }
 
+function WorldAppearance() {
+  const color = useDocumentStore((s) => s.doc.world.waterStyle.color);
+  const apply = useDocumentStore((s) => s.apply);
+  return (
+    <PanelSection title="Voda">
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => apply('Barva vody', (d) => { d.world.waterStyle.color = e.target.value; })}
+          className="h-7 w-10 cursor-pointer rounded bg-transparent"
+        />
+        <span className="text-sm text-stone-400">Barva moře</span>
+      </div>
+    </PanelSection>
+  );
+}
+
 function BaseGroundSettings() {
   const baseTextureId = useDocumentStore((s) => s.doc.world.baseTextureId);
   const apply = useDocumentStore((s) => s.apply);
@@ -317,6 +335,7 @@ export default function ContextPanel() {
       {tool === 'landBrush' && <BaseGroundSettings />}
       {tool === 'textureBrush' && <TextureSettings />}
       {(tool === 'select' || tool === 'label') && <SelectionProperties />}
+      {mode === 'world' && <WorldAppearance />}
       {mode === 'dungeon' && <DungeonGenerator />}
 
       <PanelSection title={mode === 'world' ? 'World Mode' : 'Dungeon Mode'}>
