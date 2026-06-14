@@ -112,6 +112,9 @@ export default function MapCanvas() {
   const setCamera = useEditorStore((s) => s.setCamera);
   const setCursor = useEditorStore((s) => s.setCursor);
   const stampAssetId = useEditorStore((s) => s.stampAssetId);
+  const stampRotation = useEditorStore((s) => s.stampRotation);
+  const stampScale = useEditorStore((s) => s.stampScale);
+  const stampScatter = useEditorStore((s) => s.stampScatter);
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const setSelection = useEditorStore((s) => s.setSelection);
   const importFile = useAssetLibStore((s) => s.importFile);
@@ -237,10 +240,12 @@ export default function MapCanvas() {
       px = Math.round(x / h) * h;
       py = Math.round(y / h) * h;
     }
+    const rotation = stampScatter ? Math.round(Math.random() * 360) : stampRotation;
+    const scale = stampScatter ? stampScale * (0.7 + Math.random() * 0.6) : stampScale;
     const id = crypto.randomUUID();
     apply('Položení prvku', (d) => {
       const scene = mode === 'world' ? d.world : d.dungeon;
-      scene.assets[id] = { id, assetId, x: px, y: py, rotation: 0, scale: 1, flipX: false };
+      scene.assets[id] = { id, assetId, x: px, y: py, rotation, scale, flipX: false };
       scene.assetOrder.push(id);
     });
   };

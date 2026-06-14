@@ -81,6 +81,7 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F10** — Grafika/design/ovladatelnost: kreslení chodeb (nástroj Chodba, ortogonální, snap na grid), plovoucí ovládání zoomu (přiblížit/oddálit/přizpůsobit/reset), nápověda zkratek (?), písčitá pláž u pobřeží + jemné vlnění moře, výběr barvy vody
 - [x] **F11** — Vybavení dungeonu: +16 propů a nábytku (stůl, kulatý stůl, postel, židle, koberec, stojan na zbraně, kovadlina, pytel, hrnec, krb, mříž, páka, klec, svíčky, lahvičky), přichytávání assetů na grid v dungeonu (pokládání i posun), knihovna se v dungeon módu otevírá rovnou v kategorii Dungeon
 - [x] **F12** — Dungeon blíž Dungeon Scrawlu: vržený stín podlahy na podklad (dungeon „leží" na tmavém papíru), tlustší zdi, teplejší krémová podlaha, výraznější mřížka, papírové pozadí v exportu
+- [x] **F13** — Grafika + vkládání + filtr: objemové stínování všech assetů (světlo shora → plastičtější), +18 nových assetů (pařez, houby, lekníny, liány, oáza, gejzír, močál, molo, hláska, obelisk, svatyně, stánek, suť, magický kruh, hromada zlata, jezírko lávy, svítící houby), razítkování s natočením/velikostí/rozptylem, perzistentní filtr knihovny (kategorie + hledání)
 
 ## Ovládání
 

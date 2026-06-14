@@ -1251,6 +1251,280 @@ function bottles(ctx: CanvasRenderingContext2D, s: number) {
   bottle(0.6, '#7c3b33');
 }
 
+// — rozšíření 2 —
+function stump(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.84, 0.22, 0.05);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.55 * s, 0.2 * s, 0.16 * s, 0, 0, Math.PI * 2);
+  fs(ctx, COL.wood, o);
+  ctx.fillStyle = COL.trunk;
+  ctx.fillRect(0.3 * s, 0.55 * s, 0.4 * s, 0.18 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.beginPath();
+  ctx.moveTo(0.3 * s, 0.55 * s);
+  ctx.lineTo(0.3 * s, 0.73 * s);
+  ctx.moveTo(0.7 * s, 0.55 * s);
+  ctx.lineTo(0.7 * s, 0.73 * s);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.55 * s, 0.12 * s, 0.09 * s, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = COL.trunkD;
+  ctx.lineWidth = o * 0.8;
+  ctx.stroke();
+}
+function mushrooms(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.24, 0.05);
+  const cap = (x: number, y: number, r: number, col: string) => {
+    rrect(ctx, (x - r * 0.35) * s, y * s, r * 0.7 * s, r * 1.2 * s, r * 0.2 * s);
+    fs(ctx, COL.bone, o);
+    ctx.beginPath();
+    ctx.moveTo((x - r) * s, y * s);
+    ctx.quadraticCurveTo(x * s, (y - r * 1.1) * s, (x + r) * s, y * s);
+    ctx.closePath();
+    fs(ctx, col, o);
+  };
+  cap(0.38, 0.62, 0.14, COL.cloth);
+  cap(0.62, 0.6, 0.16, '#c97a2a');
+  cap(0.5, 0.7, 0.12, COL.cloth);
+}
+function lilypads(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  for (const [x, y, r] of [[0.34, 0.46, 0.16], [0.62, 0.4, 0.18], [0.52, 0.66, 0.15]] as const) {
+    ctx.beginPath();
+    ctx.arc(x * s, y * s, r * s, 0.5, Math.PI * 2 + 0.1);
+    ctx.lineTo(x * s, y * s);
+    ctx.closePath();
+    fs(ctx, COL.leaf, o);
+  }
+  circle(ctx, 0.62 * s, 0.4 * s, 0.04 * s);
+  fs(ctx, COL.cloth, o * 0.7);
+}
+function vines(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.strokeStyle = COL.leafD;
+  ctx.lineWidth = o * 1.4;
+  ctx.lineCap = 'round';
+  for (const x of [0.34, 0.5, 0.66]) {
+    ctx.beginPath();
+    ctx.moveTo(x * s, 0.14 * s);
+    ctx.bezierCurveTo((x + 0.08) * s, 0.4 * s, (x - 0.08) * s, 0.6 * s, x * s, 0.86 * s);
+    ctx.stroke();
+  }
+  for (const [x, y] of [[0.38, 0.34], [0.46, 0.56], [0.6, 0.46], [0.64, 0.7], [0.32, 0.7]] as const) {
+    circle(ctx, x * s, y * s, 0.035 * s);
+    ctx.fillStyle = COL.leaf;
+    ctx.fill();
+  }
+}
+function oasis(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.88, 0.34, 0.05);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.62 * s, 0.32 * s, 0.22 * s, 0, 0, Math.PI * 2);
+  fs(ctx, '#d9c38a', o);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.64 * s, 0.18 * s, 0.12 * s, 0, 0, Math.PI * 2);
+  fs(ctx, COL.water, o);
+  // palmička
+  ctx.strokeStyle = COL.wood;
+  ctx.lineWidth = o * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(0.34 * s, 0.6 * s);
+  ctx.quadraticCurveTo(0.3 * s, 0.4 * s, 0.34 * s, 0.3 * s);
+  ctx.stroke();
+  for (const a of [-0.8, -0.2, 0.4]) {
+    ctx.beginPath();
+    ctx.moveTo(0.34 * s, 0.3 * s);
+    ctx.lineTo((0.34 + Math.cos(a) * 0.14) * s, (0.3 + Math.sin(a) * 0.1 - 0.04) * s);
+    ctx.strokeStyle = COL.leaf;
+    ctx.stroke();
+  }
+}
+function geyser(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.78 * s, 0.2 * s, 0.08 * s, 0, 0, Math.PI * 2);
+  fs(ctx, COL.rockD, o);
+  ctx.beginPath();
+  ctx.moveTo(0.42 * s, 0.76 * s);
+  ctx.quadraticCurveTo(0.46 * s, 0.3 * s, 0.5 * s, 0.5 * s);
+  ctx.quadraticCurveTo(0.54 * s, 0.3 * s, 0.58 * s, 0.76 * s);
+  ctx.closePath();
+  fs(ctx, 'rgba(200,225,240,0.85)', o * 0.6, false);
+}
+function marsh(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.66 * s, 0.34 * s, 0.18 * s, 0, 0, Math.PI * 2);
+  fs(ctx, '#4a5a3a', o);
+  ctx.strokeStyle = COL.leafD;
+  ctx.lineWidth = o * 1.4;
+  ctx.lineCap = 'round';
+  for (const [x, h] of [[0.36, 0.3], [0.5, 0.4], [0.64, 0.32], [0.44, 0.36], [0.58, 0.38]] as const) {
+    ctx.beginPath();
+    ctx.moveTo(x * s, 0.66 * s);
+    ctx.lineTo((x + 0.02) * s, (0.66 - h) * s);
+    ctx.stroke();
+  }
+}
+function dock(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.84, 0.36, 0.05);
+  ctx.fillStyle = COL.wood;
+  ctx.fillRect(0.3 * s, 0.4 * s, 0.4 * s, 0.16 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.3 * s, 0.4 * s, 0.4 * s, 0.16 * s);
+  ctx.strokeStyle = COL.woodD;
+  ctx.lineWidth = o * 0.8;
+  for (const x of [0.4, 0.5, 0.6]) {
+    ctx.beginPath();
+    ctx.moveTo(x * s, 0.4 * s);
+    ctx.lineTo(x * s, 0.56 * s);
+    ctx.stroke();
+  }
+  for (const x of [0.34, 0.66]) {
+    ctx.fillStyle = COL.woodD;
+    ctx.fillRect((x - 0.02) * s, 0.56 * s, 0.04 * s, 0.3 * s);
+  }
+}
+function watchtower(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.2, 0.05);
+  path(ctx, [0.4 * s, 0.4 * s, 0.6 * s, 0.4 * s, 0.66 * s, 0.86 * s, 0.34 * s, 0.86 * s]);
+  fs(ctx, COL.wood, o);
+  ctx.fillStyle = COL.woodD;
+  ctx.fillRect(0.34 * s, 0.34 * s, 0.32 * s, 0.1 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.34 * s, 0.34 * s, 0.32 * s, 0.1 * s);
+  path(ctx, [0.3 * s, 0.36 * s, 0.5 * s, 0.16 * s, 0.7 * s, 0.36 * s]);
+  fs(ctx, COL.roof, o);
+}
+function obelisk(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.16, 0.05);
+  path(ctx, [0.46 * s, 0.16 * s, 0.54 * s, 0.16 * s, 0.6 * s, 0.84 * s, 0.4 * s, 0.84 * s]);
+  fs(ctx, COL.rockL, o);
+  path(ctx, [0.5 * s, 0.16 * s, 0.54 * s, 0.16 * s, 0.6 * s, 0.84 * s, 0.5 * s, 0.84 * s]);
+  fs(ctx, COL.rockD, o, false);
+  circle(ctx, 0.5 * s, 0.4 * s, 0.03 * s);
+  fs(ctx, COL.gold, o * 0.6);
+}
+function shrine(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.26, 0.05);
+  for (const x of [0.34, 0.66]) {
+    ctx.fillStyle = COL.rock;
+    ctx.fillRect((x - 0.03) * s, 0.4 * s, 0.06 * s, 0.46 * s);
+    ctx.strokeStyle = OUT;
+    ctx.lineWidth = o;
+    ctx.strokeRect((x - 0.03) * s, 0.4 * s, 0.06 * s, 0.46 * s);
+  }
+  ctx.fillStyle = COL.rockL;
+  ctx.fillRect(0.28 * s, 0.34 * s, 0.44 * s, 0.08 * s);
+  ctx.strokeRect(0.28 * s, 0.34 * s, 0.44 * s, 0.08 * s);
+  circle(ctx, 0.5 * s, 0.64 * s, 0.07 * s);
+  fs(ctx, '#7d8ae0', o * 0.7);
+}
+function market(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.3, 0.05);
+  ctx.fillStyle = COL.wood;
+  ctx.fillRect(0.3 * s, 0.5 * s, 0.4 * s, 0.36 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.3 * s, 0.5 * s, 0.4 * s, 0.36 * s);
+  // pruhovaná stříška
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i % 2 ? COL.cloth : COL.bone;
+    path(ctx, [(0.26 + i * 0.096) * s, 0.5 * s, (0.26 + (i + 1) * 0.096) * s, 0.5 * s, (0.3 + (i + 1) * 0.088) * s, 0.36 * s, (0.3 + i * 0.088) * s, 0.36 * s]);
+    fs(ctx, i % 2 ? COL.cloth : COL.bone, o * 0.6, false);
+  }
+  path(ctx, [0.26 * s, 0.5 * s, 0.74 * s, 0.5 * s, 0.7 * s, 0.36 * s, 0.3 * s, 0.36 * s]);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.stroke();
+}
+function rubble(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  for (const [x, y, r] of [[0.36, 0.6, 0.1], [0.56, 0.66, 0.12], [0.5, 0.5, 0.08], [0.66, 0.54, 0.07], [0.3, 0.7, 0.06]] as const) {
+    path(ctx, [(x - r) * s, (y + r * 0.6) * s, x * s, (y - r) * s, (x + r) * s, y * s, (x + r * 0.4) * s, (y + r) * s]);
+    fs(ctx, (x * 10 | 0) % 2 ? COL.rock : COL.rockL, o);
+  }
+}
+function magicCircle(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.strokeStyle = '#7d8ae0';
+  ctx.lineWidth = o * 1.2;
+  circle(ctx, 0.5 * s, 0.5 * s, 0.32 * s);
+  ctx.stroke();
+  circle(ctx, 0.5 * s, 0.5 * s, 0.24 * s);
+  ctx.stroke();
+  // hvězda
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 4 * Math.PI) / 5;
+    const x = 0.5 * s + Math.cos(a) * 0.22 * s;
+    const y = 0.5 * s + Math.sin(a) * 0.22 * s;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(125,138,224,0.9)';
+  ctx.stroke();
+}
+function treasurePile(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.84, 0.28, 0.05);
+  ctx.beginPath();
+  ctx.moveTo(0.26 * s, 0.74 * s);
+  ctx.quadraticCurveTo(0.5 * s, 0.46 * s, 0.74 * s, 0.74 * s);
+  ctx.closePath();
+  fs(ctx, COL.gold, o);
+  for (const [x, y] of [[0.4, 0.66], [0.5, 0.6], [0.6, 0.66], [0.46, 0.7], [0.56, 0.7]] as const) {
+    circle(ctx, x * s, y * s, 0.035 * s);
+    ctx.fillStyle = COL.goldD;
+    ctx.stroke();
+    ctx.fillStyle = '#f0d77a';
+    ctx.fill();
+  }
+}
+function lavaPool(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.6 * s, 0.34 * s, 0.22 * s, 0, 0, Math.PI * 2);
+  fs(ctx, '#3a1a10', o);
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.6 * s, 0.26 * s, 0.16 * s, 0, 0, Math.PI * 2);
+  fs(ctx, '#b5421f', o * 0.6, false);
+  ctx.beginPath();
+  ctx.ellipse(0.46 * s, 0.56 * s, 0.1 * s, 0.05 * s, 0, 0, Math.PI * 2);
+  ctx.fillStyle = COL.fireL;
+  ctx.fill();
+}
+function mushroomGlow(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.2, 0.05);
+  const cap = (x: number, y: number, r: number) => {
+    ctx.fillStyle = '#cfe8e0';
+    ctx.fillRect((x - r * 0.25) * s, y * s, r * 0.5 * s, r * s);
+    ctx.beginPath();
+    ctx.arc(x * s, y * s, r * s, Math.PI, 0);
+    ctx.closePath();
+    fs(ctx, '#56c8b0', o);
+    circle(ctx, x * s, (y - r * 0.4) * s, r * 0.5 * s);
+    ctx.fillStyle = 'rgba(160,255,235,0.5)';
+    ctx.fill();
+  };
+  cap(0.4, 0.66, 0.12);
+  cap(0.6, 0.62, 0.14);
+  cap(0.52, 0.72, 0.1);
+}
+
 // ———————————————————————————————— REGISTR ————————————————————————————————
 type Def = [slug: string, name: string, category: CategoryId, tags: string, draw: ArtAsset['draw']];
 
@@ -1331,6 +1605,24 @@ const DEFS: Def[] = [
   ['cage', 'Klec', 'dungeon', 'klec cage prison', cage],
   ['candles', 'Svíčky', 'dungeon', 'svicky candle light', candles],
   ['bottles', 'Lahvičky', 'dungeon', 'lahvicky lektvary bottles potions', bottles],
+  // rozšíření 2
+  ['stump', 'Pařez', 'priroda', 'parez pen stump', stump],
+  ['mushrooms', 'Houby', 'priroda', 'houby hriby mushrooms', mushrooms],
+  ['lilypads', 'Lekníny', 'priroda', 'lekniny voda lilypad', lilypads],
+  ['vines', 'Liány', 'priroda', 'liany brectan vines ivy', vines],
+  ['oasis', 'Oáza', 'teren', 'oaza poust oasis', oasis],
+  ['geyser', 'Gejzír', 'teren', 'gejzir geyser', geyser],
+  ['marsh', 'Močál', 'teren', 'mocal bazina marsh swamp', marsh],
+  ['dock', 'Molo', 'stavby', 'molo pristav dock pier', dock],
+  ['watchtower', 'Hláska', 'stavby', 'hlaska vez watchtower', watchtower],
+  ['obelisk', 'Obelisk', 'stavby', 'obelisk monolit', obelisk],
+  ['shrine', 'Svatyně', 'stavby', 'svatyne oltar shrine', shrine],
+  ['market', 'Stánek', 'stavby', 'stanek trh market stall', market],
+  ['rubble', 'Suť', 'dungeon', 'sut kameni rubble debris', rubble],
+  ['magic-circle', 'Magický kruh', 'dungeon', 'magicky kruh magic circle rune', magicCircle],
+  ['treasure', 'Hromada zlata', 'dungeon', 'poklad zlato treasure pile gold', treasurePile],
+  ['lava-pool', 'Jezírko lávy', 'dungeon', 'lava jezirko lava pool', lavaPool],
+  ['mushroom-glow', 'Svítící houby', 'dungeon', 'houby svitici glow mushroom', mushroomGlow],
 ];
 
 export const ART_ASSETS: ArtAsset[] = DEFS.map(([slug, name, category, tags, draw]) => ({
@@ -1359,6 +1651,16 @@ export function getArtCanvas(id: string, px = 384): HTMLCanvasElement | null {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   def.draw(ctx, px);
+  // Objemové stínování (světlo shora) přes nakreslené pixely → assety působí plastičtěji
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  const g = ctx.createLinearGradient(0, px * 0.1, 0, px * 0.92);
+  g.addColorStop(0, 'rgba(255,250,238,0.14)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.2)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, px, px);
+  ctx.restore();
   cache.set(key, canvas);
   return canvas;
 }

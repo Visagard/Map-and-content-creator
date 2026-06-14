@@ -27,13 +27,41 @@ function ArtThumb({ id }: { id: string }) {
   return <canvas ref={ref} width={56} height={56} className="h-full w-full" />;
 }
 
+function StampSettings() {
+  const rot = useEditorStore((s) => s.stampRotation);
+  const scale = useEditorStore((s) => s.stampScale);
+  const scatter = useEditorStore((s) => s.stampScatter);
+  const setRot = useEditorStore((s) => s.setStampRotation);
+  const setScale = useEditorStore((s) => s.setStampScale);
+  const setScatter = useEditorStore((s) => s.setStampScatter);
+  return (
+    <div className="space-y-1.5 border-b border-white/5 px-3 py-2.5 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="text-ink-400">Natočení</span>
+        <span className="tabular-nums text-stone-300">{rot}°</span>
+      </div>
+      <input type="range" min={0} max={360} value={rot} onChange={(e) => setRot(Number(e.target.value))} className="range-ember" />
+      <div className="flex items-center justify-between">
+        <span className="text-ink-400">Velikost</span>
+        <span className="tabular-nums text-stone-300">{scale.toFixed(2)}×</span>
+      </div>
+      <input type="range" min={20} max={300} value={Math.round(scale * 100)} onChange={(e) => setScale(Number(e.target.value) / 100)} className="range-ember" />
+      <label className="flex cursor-pointer items-center gap-2 pt-0.5 text-stone-300">
+        <input type="checkbox" checked={scatter} onChange={(e) => setScatter(e.target.checked)} className="accent-ember" />
+        Rozptyl (náhodné natočení i velikost)
+      </label>
+    </div>
+  );
+}
+
 type Filter = CategoryId | 'all' | 'moje';
 
 export default function AssetPanel() {
-  const mode = useEditorStore((s) => s.mode);
-  const [query, setQuery] = useState('');
-  // V dungeon módu rovnou ukaž kategorii Dungeon (rychlejší přístup k propům)
-  const [filter, setFilter] = useState<Filter>(() => (mode === 'dungeon' ? 'dungeon' : 'all'));
+  // Filtr i hledání jsou perzistentní (drží se napříč otevřením panelu)
+  const query = useEditorStore((s) => s.assetQuery);
+  const setQuery = useEditorStore((s) => s.setAssetQuery);
+  const filter = useEditorStore((s) => s.assetCategory) as Filter;
+  const setFilter = useEditorStore((s) => s.setAssetCategory);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const stampAssetId = useEditorStore((s) => s.stampAssetId);
@@ -130,6 +158,8 @@ export default function AssetPanel() {
           />
         </div>
       </div>
+
+      <StampSettings />
 
       {/* Mřížka prvků */}
       <div
