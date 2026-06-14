@@ -89,6 +89,7 @@ export default function AssetLayer({ mode }: { mode: EditorMode }) {
   const order = useDocumentStore((s) => (mode === 'world' ? s.doc.world.assetOrder : s.doc.dungeon.assetOrder));
   const apply = useDocumentStore((s) => s.apply);
 
+  const gridCell = useDocumentStore((s) => s.doc.dungeon.grid.cellSize);
   const tool = useEditorStore((s) => s.tool);
   const selection = useEditorStore((s) => s.selection);
   const setSelection = useEditorStore((s) => s.setSelection);
@@ -112,10 +113,16 @@ export default function AssetLayer({ mode }: { mode: EditorMode }) {
   }, [selection, order, listening]);
 
   const onChange = (id: string, patch: Partial<PlacedAsset>) => {
+    const p = { ...patch };
+    if (mode === 'dungeon') {
+      const h = gridCell / 2; // přichytávání na půlbuňky
+      if (p.x !== undefined) p.x = Math.round(p.x / h) * h;
+      if (p.y !== undefined) p.y = Math.round(p.y / h) * h;
+    }
     apply('Úprava prvku', (d) => {
       const scene = mode === 'world' ? d.world : d.dungeon;
       const a = scene.assets[id];
-      if (a) Object.assign(a, patch);
+      if (a) Object.assign(a, p);
     });
   };
 

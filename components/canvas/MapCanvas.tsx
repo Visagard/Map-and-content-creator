@@ -230,10 +230,17 @@ export default function MapCanvas() {
   };
 
   const placeAsset = (assetId: string, x: number, y: number) => {
+    let px = x;
+    let py = y;
+    if (mode === 'dungeon') {
+      const h = gridCell / 2; // přichytávání na půlbuňky
+      px = Math.round(x / h) * h;
+      py = Math.round(y / h) * h;
+    }
     const id = crypto.randomUUID();
     apply('Položení prvku', (d) => {
       const scene = mode === 'world' ? d.world : d.dungeon;
-      scene.assets[id] = { id, assetId, x, y, rotation: 0, scale: 1, flipX: false };
+      scene.assets[id] = { id, assetId, x: px, y: py, rotation: 0, scale: 1, flipX: false };
       scene.assetOrder.push(id);
     });
   };

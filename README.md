@@ -79,6 +79,7 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F8** — Kartografická vrstva: soustředné vodní hloubkové pásy (mělčina→hloubka), pergamenové zrno + rámeček mapy, textové popisky (serif font, halo, editace), +21 nových kreslených assetů (vesnice, maják, loď, menhiry, vodopád, útes, trůn, fontána, kotlík, sarkofág, pavučina…)
 - [x] **F9** — Úroveň Dungeon Scrawl / Inkarnate: dungeon má sloučenou podlahu s jediným obrysem zdí (marching-squares přes rastr buněk) + vnitřní stín zdí + kamennou texturu + mřížku jen na podlaze; svět má vždy plně texturovaný podklad pevniny (volitelný biom)
 - [x] **F10** — Grafika/design/ovladatelnost: kreslení chodeb (nástroj Chodba, ortogonální, snap na grid), plovoucí ovládání zoomu (přiblížit/oddálit/přizpůsobit/reset), nápověda zkratek (?), písčitá pláž u pobřeží + jemné vlnění moře, výběr barvy vody
+- [x] **F11** — Vybavení dungeonu: +16 propů a nábytku (stůl, kulatý stůl, postel, židle, koberec, stojan na zbraně, kovadlina, pytel, hrnec, krb, mříž, páka, klec, svíčky, lahvičky), přichytávání assetů na grid v dungeonu (pokládání i posun), knihovna se v dungeon módu otevírá rovnou v kategorii Dungeon
 
 ## Ovládání
 

@@ -30,8 +30,10 @@ function ArtThumb({ id }: { id: string }) {
 type Filter = CategoryId | 'all' | 'moje';
 
 export default function AssetPanel() {
+  const mode = useEditorStore((s) => s.mode);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  // V dungeon módu rovnou ukaž kategorii Dungeon (rychlejší přístup k propům)
+  const [filter, setFilter] = useState<Filter>(() => (mode === 'dungeon' ? 'dungeon' : 'all'));
   const fileInput = useRef<HTMLInputElement>(null);
 
   const stampAssetId = useEditorStore((s) => s.stampAssetId);
