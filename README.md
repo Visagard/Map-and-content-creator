@@ -80,6 +80,7 @@ npm run preview      # lokální náhled produkčního buildu
 - [x] **F9** — Úroveň Dungeon Scrawl / Inkarnate: dungeon má sloučenou podlahu s jediným obrysem zdí (marching-squares přes rastr buněk) + vnitřní stín zdí + kamennou texturu + mřížku jen na podlaze; svět má vždy plně texturovaný podklad pevniny (volitelný biom)
 - [x] **F10** — Grafika/design/ovladatelnost: kreslení chodeb (nástroj Chodba, ortogonální, snap na grid), plovoucí ovládání zoomu (přiblížit/oddálit/přizpůsobit/reset), nápověda zkratek (?), písčitá pláž u pobřeží + jemné vlnění moře, výběr barvy vody
 - [x] **F11** — Vybavení dungeonu: +16 propů a nábytku (stůl, kulatý stůl, postel, židle, koberec, stojan na zbraně, kovadlina, pytel, hrnec, krb, mříž, páka, klec, svíčky, lahvičky), přichytávání assetů na grid v dungeonu (pokládání i posun), knihovna se v dungeon módu otevírá rovnou v kategorii Dungeon
+- [x] **F12** — Dungeon blíž Dungeon Scrawlu: vržený stín podlahy na podklad (dungeon „leží" na tmavém papíru), tlustší zdi, teplejší krémová podlaha, výraznější mřížka, papírové pozadí v exportu
 
 ## Ovládání
 

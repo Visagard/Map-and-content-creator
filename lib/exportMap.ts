@@ -338,10 +338,20 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     if (opts.background !== 'transparent') {
       ctx.fillStyle = '#0e0f13';
       ctx.fillRect(minX, minY, W, H);
+      // tmavý papírový podklad
+      const pg = ctx.createPattern(getPaperGrain(), 'repeat');
+      if (pg) {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = pg;
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.restore();
+      }
     }
-    // Sloučená podlaha + jeden obrys zdí (Dungeon Scrawl styl)
+    // Sloučená podlaha + jeden obrys zdí (Dungeon Scrawl styl) + vržený stín
     const geom = computeDungeonGeometry(doc.dungeon, doc.dungeon.grid.cellSize);
-    drawDungeon(ctx, geom, { grid: !!opts.grid, floorTexture: true });
+    drawDungeon(ctx, geom, { grid: !!opts.grid, floorTexture: true, scale: ratio });
     drawAssets(ctx, doc.dungeon);
     if (opts.background !== 'transparent') drawFrame(ctx, minX, minY, W, H);
   }

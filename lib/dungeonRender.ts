@@ -4,10 +4,10 @@
 import type { DungeonScene } from './types';
 import { getTextureCanvas } from './textures';
 
-export const FLOOR = '#cbc5b4';
-export const WALL = '#15171c';
-export const WALL_W = 6;
-const GRID = 'rgba(22,26,34,0.34)';
+export const FLOOR = '#d7ceba';
+export const WALL = '#14161b';
+export const WALL_W = 7;
+const GRID = 'rgba(40,44,54,0.42)';
 
 export interface DungeonGeometry {
   cell: number;
@@ -67,11 +67,14 @@ export function computeDungeonGeometry(scene: SceneLike, cell: number): DungeonG
 export interface DrawDungeonOpts {
   grid?: boolean;
   floorTexture?: boolean;
+  /** world→device měřítko (camera.scale·pixelRatio živě, ratio v exportu) — pro stín v world jednotkách */
+  scale?: number;
 }
 
 export function drawDungeon(ctx: CanvasRenderingContext2D, geom: DungeonGeometry, opts: DrawDungeonOpts = {}): void {
   const { cell, cells } = geom;
   if (cells.size === 0) return;
+  const sc = opts.scale ?? 1;
 
   const arr: [number, number][] = [];
   let minCx = Infinity;
@@ -95,6 +98,17 @@ export function drawDungeon(ctx: CanvasRenderingContext2D, geom: DungeonGeometry
   };
 
   ctx.save();
+
+  // Vržený stín na podklad → dungeon „leží" na tmavém papíru (vzhled Dungeon Scrawl)
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur = Math.min(cell * 0.55 * sc, 90);
+  ctx.shadowOffsetX = Math.min(cell * 0.14 * sc, 26);
+  ctx.shadowOffsetY = Math.min(cell * 0.2 * sc, 34);
+  ctx.fillStyle = '#000';
+  floorPath();
+  ctx.fill();
+  ctx.restore();
 
   // Podlaha (sloučené buňky; mírný přesah ruší šev mezi dlaždicemi)
   ctx.fillStyle = FLOOR;

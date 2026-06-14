@@ -603,7 +603,7 @@ export default function MapCanvas() {
                   drawDungeon(
                     (ctx as unknown as { _context: CanvasRenderingContext2D })._context,
                     dungeonGeom,
-                    { grid: true },
+                    { grid: true, scale: camera.scale * ((typeof window !== 'undefined' && window.devicePixelRatio) || 1) },
                   )
                 }
                 listening={false}
