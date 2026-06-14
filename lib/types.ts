@@ -12,7 +12,8 @@ export type ToolId =
   | 'room'
   | 'corridor'
   | 'asset'
-  | 'label';
+  | 'label'
+  | 'pen';
 
 // ---- World Mode -------------------------------------------------------------
 
@@ -39,6 +40,16 @@ export interface TextLabel {
   color: string;
 }
 
+/** Volný tah perem/tužkou (řeky, cesty, hranice, poznámky). */
+export interface InkStroke {
+  id: string;
+  points: number[];
+  color: string;
+  width: number;
+  dash: boolean;
+  opacity: number;
+}
+
 export interface WorldScene {
   waterStyle: { color: string; textureId?: string };
   landColor: string;
@@ -49,6 +60,8 @@ export interface WorldScene {
   assetOrder: string[];
   labels: Record<string, TextLabel>;
   labelOrder: string[];
+  ink: Record<string, InkStroke>;
+  inkOrder: string[];
 }
 
 // ---- Dungeon Mode -----------------------------------------------------------
@@ -76,6 +89,8 @@ export interface DungeonScene {
   corridorOrder: string[];
   assets: Record<string, PlacedAsset>;
   assetOrder: string[];
+  ink: Record<string, InkStroke>;
+  inkOrder: string[];
 }
 
 // ---- Sdílené ----------------------------------------------------------------
@@ -132,6 +147,8 @@ export function createEmptyDocument(id: string, name = 'Nová mapa'): MapDocumen
       assetOrder: [],
       labels: {},
       labelOrder: [],
+      ink: {},
+      inkOrder: [],
     },
     dungeon: {
       grid: { cellSize: 48, visible: true },
@@ -141,6 +158,8 @@ export function createEmptyDocument(id: string, name = 'Nová mapa'): MapDocumen
       corridorOrder: [],
       assets: {},
       assetOrder: [],
+      ink: {},
+      inkOrder: [],
     },
   };
 }

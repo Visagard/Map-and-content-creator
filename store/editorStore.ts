@@ -12,6 +12,7 @@ interface EditorState {
   mode: EditorMode;
   tool: ToolId;
   brush: { size: number; textureId: string | null; opacity: number; softness: number };
+  pen: { color: string; width: number; dash: boolean; opacity: number };
   camera: Camera;
   selection: string[];
   // Aktuálně vybraný prvek z katalogu k pokládání (Asset tool)
@@ -34,6 +35,7 @@ interface EditorState {
   setBrushTexture: (textureId: string | null) => void;
   setBrushOpacity: (opacity: number) => void;
   setBrushSoftness: (softness: number) => void;
+  setPen: (patch: Partial<{ color: string; width: number; dash: boolean; opacity: number }>) => void;
   setCamera: (camera: Partial<Camera>) => void;
   resetCamera: () => void;
   setSelection: (ids: string[]) => void;
@@ -63,6 +65,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   mode: 'world',
   tool: 'landBrush',
   brush: { size: 64, textureId: 'grass', opacity: 1, softness: 0.35 },
+  pen: { color: '#26354a', width: 6, dash: false, opacity: 1 },
   camera: { x: 0, y: 0, scale: 1 },
   selection: [],
   stampAssetId: null,
@@ -96,6 +99,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => ({ brush: { ...s.brush, opacity: Math.min(1, Math.max(0.05, opacity)) } })),
   setBrushSoftness: (softness) =>
     set((s) => ({ brush: { ...s.brush, softness: Math.min(1, Math.max(0, softness)) } })),
+  setPen: (patch) => set((s) => ({ pen: { ...s.pen, ...patch } })),
 
   setCamera: (camera) => set((s) => ({ camera: { ...s.camera, ...camera } })),
   resetCamera: () => set({ camera: { x: 0, y: 0, scale: 1 } }),

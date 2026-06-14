@@ -47,6 +47,8 @@ interface DocumentState {
 
   /** Smaže položené prvky podle id z dané scény (jeden krok historie). */
   deleteAssets: (mode: EditorMode, ids: string[]) => void;
+  /** Otočí vybrané prvky o delta stupňů. */
+  rotateAssets: (mode: EditorMode, ids: string[], delta: number) => void;
   /** Odstraní všechny instance odkazující na daný assetId (po smazání z knihovny). */
   removeByAssetId: (assetId: string) => void;
 
@@ -142,6 +144,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
           const li = d.world.labelOrder.indexOf(id);
           if (li >= 0) d.world.labelOrder.splice(li, 1);
         }
+      });
+    });
+  },
+
+  rotateAssets: (mode, ids, delta) => {
+    if (ids.length === 0) return;
+    get().apply('Otočení prvku', (d) => {
+      const scene = mode === 'world' ? d.world : d.dungeon;
+      ids.forEach((id) => {
+        const a = scene.assets[id];
+        if (a) a.rotation = (((a.rotation + delta) % 360) + 360) % 360;
       });
     });
   },

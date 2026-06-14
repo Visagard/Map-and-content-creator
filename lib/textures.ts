@@ -20,6 +20,12 @@ export const TEXTURES: TextureDef[] = [
   { id: 'lava', name: 'Láva' },
   { id: 'rock', name: 'Skála' },
   { id: 'tundra', name: 'Tundra' },
+  { id: 'cobble', name: 'Dlažba' },
+  { id: 'autumn', name: 'Podzim' },
+  { id: 'darkgrass', name: 'Tmavá tráva' },
+  { id: 'mud', name: 'Bahno' },
+  { id: 'moss', name: 'Mech' },
+  { id: 'savanna', name: 'Savana' },
 ];
 
 const PALETTE: Record<string, { base: string; dots: string[] }> = {
@@ -35,6 +41,12 @@ const PALETTE: Record<string, { base: string; dots: string[] }> = {
   lava: { base: '#b5421f', dots: ['#d65a2a', '#8a2f14', '#e87a35', '#a83a1b'] },
   rock: { base: '#6e6a66', dots: ['#5a5652', '#807c78', '#4e4a47', '#666260'] },
   tundra: { base: '#9aa28c', dots: ['#868e76', '#aab394', '#76806a', '#929a84'] },
+  cobble: { base: '#8b8680', dots: ['#6f6a64', '#a39d95', '#5e5a55', '#7c7770'] },
+  autumn: { base: '#9a6a30', dots: ['#b5803a', '#7c5424', '#c98f3f', '#86602c'] },
+  darkgrass: { base: '#33502c', dots: ['#284022', '#3f6336', '#1f3219', '#365a2e'] },
+  mud: { base: '#5e4a32', dots: ['#4c3b27', '#6e5840', '#3f3120', '#574326'] },
+  moss: { base: '#4a5e2e', dots: ['#3a4c24', '#5c7440', '#2f3e1d', '#506838'] },
+  savanna: { base: '#bdaa66', dots: ['#c9b870', '#9a8a4a', '#d6c386', '#a89a58'] },
 };
 
 const cache = new Map<string, HTMLCanvasElement>();

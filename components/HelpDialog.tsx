@@ -9,6 +9,8 @@ const GLOBAL: [string, string][] = [
   ['Ctrl+Z / Ctrl+Shift+Z', 'Zpět / Vpřed'],
   ['[ / ]', 'Zmenšit / zvětšit štětec'],
   ['Del / Esc', 'Smazat výběr / zrušit výběr'],
+  ['Q / E', 'Otočit vybraný prvek (Select tool)'],
+  ['Kolečko nad výběrem', 'Otočit vybraný prvek'],
   ['Ctrl+E', 'Export do PNG/WebP'],
   ['Mezerník + táhni', 'Posun plátna'],
   ['Kolečko myši', 'Zoom ke kurzoru'],

@@ -1525,6 +1525,221 @@ function mushroomGlow(ctx: CanvasRenderingContext2D, s: number) {
   cap(0.52, 0.72, 0.1);
 }
 
+// — rozšíření 3 —
+function birch(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  const cx = 0.5 * s;
+  shadow(ctx, s);
+  ctx.fillStyle = '#e8e4da';
+  ctx.fillRect(cx - 0.045 * s, 0.5 * s, 0.09 * s, 0.4 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(cx - 0.045 * s, 0.5 * s, 0.09 * s, 0.4 * s);
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = o * 0.8;
+  for (const y of [0.58, 0.68, 0.78]) {
+    ctx.beginPath();
+    ctx.moveTo(cx - 0.045 * s, y * s);
+    ctx.lineTo(cx - 0.01 * s, y * s);
+    ctx.stroke();
+  }
+  circle(ctx, cx, 0.36 * s, 0.22 * s);
+  fs(ctx, COL.leafL, o);
+}
+function slime(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.26, 0.05);
+  ctx.beginPath();
+  ctx.moveTo(0.24 * s, 0.78 * s);
+  ctx.bezierCurveTo(0.2 * s, 0.4 * s, 0.8 * s, 0.4 * s, 0.76 * s, 0.78 * s);
+  ctx.closePath();
+  fs(ctx, 'rgba(90,180,90,0.92)', o);
+  circle(ctx, 0.42 * s, 0.6 * s, 0.04 * s);
+  circle(ctx, 0.58 * s, 0.6 * s, 0.04 * s);
+  ctx.fillStyle = COL.dark;
+  ctx.fill();
+  circle(ctx, 0.42 * s, 0.6 * s, 0.04 * s);
+  ctx.fill();
+  circle(ctx, 0.44 * s, 0.5 * s, 0.06 * s);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fill();
+}
+function spider(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.strokeStyle = COL.dark;
+  ctx.lineWidth = o * 1.3;
+  ctx.lineCap = 'round';
+  for (const sgn of [-1, 1]) {
+    for (const [a, b] of [[0.3, 0.36], [0.36, 0.5], [0.36, 0.64], [0.3, 0.74]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(0.5 * s, 0.55 * s);
+      ctx.lineTo((0.5 + sgn * 0.12) * s, a * s);
+      ctx.lineTo((0.5 + sgn * 0.24) * s, b * s);
+      ctx.stroke();
+    }
+  }
+  circle(ctx, 0.5 * s, 0.6 * s, 0.13 * s);
+  fs(ctx, '#2a2420', o);
+  circle(ctx, 0.5 * s, 0.46 * s, 0.07 * s);
+  fs(ctx, '#2a2420', o);
+  circle(ctx, 0.47 * s, 0.45 * s, 0.014 * s);
+  circle(ctx, 0.53 * s, 0.45 * s, 0.014 * s);
+  ctx.fillStyle = '#c43b2f';
+  ctx.fill();
+  circle(ctx, 0.47 * s, 0.45 * s, 0.014 * s);
+  ctx.fill();
+}
+function mimic(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.3, 0.06);
+  rrect(ctx, 0.24 * s, 0.5 * s, 0.52 * s, 0.36 * s, 0.04 * s);
+  fs(ctx, COL.wood, o);
+  ctx.beginPath();
+  ctx.moveTo(0.24 * s, 0.5 * s);
+  ctx.arc(0.5 * s, 0.5 * s, 0.26 * s, Math.PI, 0);
+  ctx.closePath();
+  fs(ctx, COL.woodL, o);
+  // zuby
+  ctx.fillStyle = COL.bone;
+  for (let i = 0; i < 7; i++) {
+    const x = 0.27 + i * 0.066;
+    path(ctx, [x * s, 0.5 * s, (x + 0.05) * s, 0.5 * s, (x + 0.025) * s, 0.57 * s]);
+    fs(ctx, COL.bone, o * 0.6, false);
+  }
+  // jazyk
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.6 * s, 0.1 * s, 0.05 * s, 0, 0, Math.PI * 2);
+  fs(ctx, '#c43b2f', o * 0.7);
+}
+function gemCluster(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.84, 0.22, 0.05);
+  const gem = (x: number, y: number, r: number, col: string) => {
+    path(ctx, [x * s, (y - r) * s, (x + r * 0.7) * s, y * s, x * s, (y + r) * s, (x - r * 0.7) * s, y * s]);
+    fs(ctx, col, o);
+  };
+  gem(0.4, 0.66, 0.1, '#7d8ae0');
+  gem(0.6, 0.64, 0.12, '#56c8b0');
+  gem(0.5, 0.56, 0.1, '#c43b8f');
+}
+function brokenPillar(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.2, 0.05);
+  ctx.fillStyle = COL.wallD;
+  ctx.fillRect(0.34 * s, 0.82 * s, 0.32 * s, 0.08 * s);
+  ctx.strokeStyle = OUT;
+  ctx.lineWidth = o;
+  ctx.strokeRect(0.34 * s, 0.82 * s, 0.32 * s, 0.08 * s);
+  path(ctx, [0.4 * s, 0.5 * s, 0.6 * s, 0.46 * s, 0.6 * s, 0.82 * s, 0.4 * s, 0.82 * s]);
+  fs(ctx, COL.wall, o);
+  // odlomené kusy
+  path(ctx, [0.66 * s, 0.78 * s, 0.76 * s, 0.74 * s, 0.78 * s, 0.84 * s, 0.68 * s, 0.86 * s]);
+  fs(ctx, COL.wallD, o);
+}
+function bloodstain(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.fillStyle = 'rgba(120,20,16,0.7)';
+  ctx.beginPath();
+  ctx.ellipse(0.5 * s, 0.55 * s, 0.22 * s, 0.16 * s, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  for (const [x, y, r] of [[0.7, 0.5, 0.05], [0.3, 0.66, 0.04], [0.66, 0.7, 0.035], [0.36, 0.42, 0.03]] as const) {
+    circle(ctx, x * s, y * s, r * s);
+    ctx.fillStyle = 'rgba(120,20,16,0.6)';
+    ctx.fill();
+  }
+}
+function runeStone(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.2, 0.05);
+  ctx.beginPath();
+  ctx.moveTo(0.36 * s, 0.86 * s);
+  ctx.lineTo(0.36 * s, 0.34 * s);
+  ctx.arc(0.5 * s, 0.34 * s, 0.14 * s, Math.PI, 0);
+  ctx.lineTo(0.64 * s, 0.86 * s);
+  ctx.closePath();
+  fs(ctx, COL.rock, o);
+  ctx.strokeStyle = '#7d8ae0';
+  ctx.lineWidth = o * 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0.5 * s, 0.42 * s);
+  ctx.lineTo(0.5 * s, 0.74 * s);
+  ctx.moveTo(0.42 * s, 0.5 * s);
+  ctx.lineTo(0.5 * s, 0.58 * s);
+  ctx.lineTo(0.58 * s, 0.5 * s);
+  ctx.moveTo(0.44 * s, 0.66 * s);
+  ctx.lineTo(0.56 * s, 0.66 * s);
+  ctx.stroke();
+}
+function mineEntrance(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.3, 0.05);
+  path(ctx, [0.24 * s, 0.86 * s, 0.24 * s, 0.5 * s, 0.5 * s, 0.36 * s, 0.76 * s, 0.5 * s, 0.76 * s, 0.86 * s]);
+  fs(ctx, COL.rockD, o);
+  ctx.beginPath();
+  ctx.moveTo(0.36 * s, 0.86 * s);
+  ctx.lineTo(0.36 * s, 0.56 * s);
+  ctx.arc(0.5 * s, 0.56 * s, 0.14 * s, Math.PI, 0);
+  ctx.lineTo(0.64 * s, 0.86 * s);
+  ctx.closePath();
+  fs(ctx, COL.dark, o);
+  // trámy
+  ctx.strokeStyle = COL.woodD;
+  ctx.lineWidth = o * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(0.34 * s, 0.86 * s);
+  ctx.lineTo(0.34 * s, 0.54 * s);
+  ctx.lineTo(0.66 * s, 0.54 * s);
+  ctx.lineTo(0.66 * s, 0.86 * s);
+  ctx.stroke();
+}
+function fence(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  ctx.strokeStyle = COL.wood;
+  ctx.lineWidth = o * 2.2;
+  ctx.lineCap = 'round';
+  for (const x of [0.3, 0.5, 0.7]) {
+    ctx.beginPath();
+    ctx.moveTo(x * s, 0.78 * s);
+    ctx.lineTo(x * s, 0.42 * s);
+    ctx.stroke();
+  }
+  ctx.lineWidth = o * 1.6;
+  for (const y of [0.5, 0.66]) {
+    ctx.beginPath();
+    ctx.moveTo(0.26 * s, y * s);
+    ctx.lineTo(0.74 * s, y * s);
+    ctx.stroke();
+  }
+}
+function scarecrow(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.9, 0.16, 0.04);
+  ctx.strokeStyle = COL.woodD;
+  ctx.lineWidth = o * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(0.5 * s, 0.86 * s);
+  ctx.lineTo(0.5 * s, 0.34 * s);
+  ctx.moveTo(0.3 * s, 0.46 * s);
+  ctx.lineTo(0.7 * s, 0.46 * s);
+  ctx.stroke();
+  circle(ctx, 0.5 * s, 0.3 * s, 0.08 * s);
+  fs(ctx, '#c9a86a', o);
+  path(ctx, [0.42 * s, 0.46 * s, 0.58 * s, 0.46 * s, 0.6 * s, 0.66 * s, 0.4 * s, 0.66 * s]);
+  fs(ctx, COL.cloth, o);
+}
+function beehive(ctx: CanvasRenderingContext2D, s: number) {
+  const o = ow(s);
+  shadow(ctx, s, 0.5, 0.86, 0.2, 0.05);
+  for (let i = 0; i < 4; i++) {
+    const w = 0.34 - i * 0.05;
+    const y = 0.4 + i * 0.12;
+    rrect(ctx, (0.5 - w / 2) * s, y * s, w * s, 0.12 * s, 0.05 * s);
+    fs(ctx, '#d9a64a', o);
+  }
+  circle(ctx, 0.5 * s, 0.66 * s, 0.03 * s);
+  fs(ctx, COL.dark, o);
+}
+
 // ———————————————————————————————— REGISTR ————————————————————————————————
 type Def = [slug: string, name: string, category: CategoryId, tags: string, draw: ArtAsset['draw']];
 
@@ -1623,6 +1838,19 @@ const DEFS: Def[] = [
   ['treasure', 'Hromada zlata', 'dungeon', 'poklad zlato treasure pile gold', treasurePile],
   ['lava-pool', 'Jezírko lávy', 'dungeon', 'lava jezirko lava pool', lavaPool],
   ['mushroom-glow', 'Svítící houby', 'dungeon', 'houby svitici glow mushroom', mushroomGlow],
+  // rozšíření 3
+  ['birch', 'Bříza', 'priroda', 'briza strom birch tree', birch],
+  ['fence', 'Plot', 'stavby', 'plot ohrada fence', fence],
+  ['scarecrow', 'Strašák', 'stavby', 'strasak scarecrow', scarecrow],
+  ['beehive', 'Úl', 'priroda', 'ul vcely beehive', beehive],
+  ['mine', 'Vchod do dolu', 'stavby', 'dul jeskyne mine cave entrance', mineEntrance],
+  ['slime', 'Sliz', 'bytosti', 'sliz slime monstrum', slime],
+  ['spider', 'Pavouk', 'bytosti', 'pavouk spider', spider],
+  ['mimic', 'Mimik', 'bytosti', 'mimik truhla mimic monster', mimic],
+  ['gems', 'Drahokamy', 'dungeon', 'drahokamy gems krystaly cluster', gemCluster],
+  ['broken-pillar', 'Zlomený sloup', 'dungeon', 'sloup zlomeny broken pillar', brokenPillar],
+  ['bloodstain', 'Krvavá skvrna', 'dungeon', 'krev skvrna blood stain', bloodstain],
+  ['rune-stone', 'Runový kámen', 'dungeon', 'runa kamen rune stone', runeStone],
 ];
 
 export const ART_ASSETS: ArtAsset[] = DEFS.map(([slug, name, category, tags, draw]) => ({

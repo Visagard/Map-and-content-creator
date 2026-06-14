@@ -48,6 +48,14 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Otáčení vybraných prvků v Select toolu (Q/E), Shift = jemně
+      if (editor.tool === 'select' && editor.selection.length && (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'e')) {
+        e.preventDefault();
+        const step = e.shiftKey ? 2 : 15;
+        doc.rotateAssets(editor.mode, editor.selection, e.key.toLowerCase() === 'e' ? step : -step);
+        return;
+      }
+
       // Nápověda zkratek
       if (e.key === '?') {
         e.preventDefault();

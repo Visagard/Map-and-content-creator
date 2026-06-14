@@ -8,6 +8,7 @@ import {
   Spline,
   Shapes,
   Type,
+  PenTool,
   type LucideIcon,
 } from 'lucide-react';
 import type { EditorMode, ToolId } from './types';
@@ -85,6 +86,14 @@ export const TOOLS: ToolDef[] = [
     shortcut: 'L',
     icon: Type,
     modes: ['world'],
+  },
+  {
+    id: 'pen',
+    label: 'Pero',
+    hint: 'Volné kreslení čar — řeky, cesty, hranice, poznámky',
+    shortcut: 'P',
+    icon: PenTool,
+    modes: ['world', 'dungeon'],
   },
   {
     id: 'pan',

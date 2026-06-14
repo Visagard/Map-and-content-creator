@@ -66,6 +66,54 @@ function TextureSwatch({ def, active, onClick }: { def: TextureDef; active: bool
   );
 }
 
+const PEN_PRESETS: [string, string][] = [
+  ['#26354a', 'Řeka'],
+  ['#6a4a2a', 'Cesta'],
+  ['#7a2a22', 'Hranice'],
+  ['#2a2a2a', 'Tužka'],
+  ['#2f5530', 'Stezka'],
+  ['#7d8ae0', 'Magie'],
+];
+
+function PenSettings() {
+  const pen = useEditorStore((s) => s.pen);
+  const setPen = useEditorStore((s) => s.setPen);
+  return (
+    <PanelSection title="Pero">
+      <div className="flex flex-wrap gap-1.5">
+        {PEN_PRESETS.map(([c, label]) => (
+          <button
+            key={c}
+            onClick={() => setPen({ color: c })}
+            title={label}
+            className={`h-6 w-6 rounded-full ring-2 ${pen.color === c ? 'ring-ember' : 'ring-white/10'}`}
+            style={{ background: c }}
+          />
+        ))}
+        <input type="color" value={pen.color} onChange={(e) => setPen({ color: e.target.value })} className="h-6 w-8 cursor-pointer rounded bg-transparent" />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-sm">
+        <span className="text-stone-400">Šířka</span>
+        <span className="tabular-nums text-stone-200">{pen.width}px</span>
+      </div>
+      <input type="range" min={1} max={48} value={pen.width} onChange={(e) => setPen({ width: Number(e.target.value) })} className="range-ember mt-1.5" />
+
+      <div className="mt-3 flex items-center justify-between text-sm">
+        <span className="text-stone-400">Krytí</span>
+        <span className="tabular-nums text-stone-200">{Math.round(pen.opacity * 100)}%</span>
+      </div>
+      <input type="range" min={10} max={100} value={Math.round(pen.opacity * 100)} onChange={(e) => setPen({ opacity: Number(e.target.value) / 100 })} className="range-ember mt-1.5" />
+
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-stone-300">
+        <input type="checkbox" checked={pen.dash} onChange={(e) => setPen({ dash: e.target.checked })} className="accent-ember" />
+        Čárkovaně
+      </label>
+      <p className="mt-2 text-xs text-ink-400">Táhni po mapě — řeky, cesty, hranice, poznámky. Vratné přes Ctrl+Z.</p>
+    </PanelSection>
+  );
+}
+
 function WorldAppearance() {
   const color = useDocumentStore((s) => s.doc.world.waterStyle.color);
   const apply = useDocumentStore((s) => s.apply);
@@ -334,6 +382,7 @@ export default function ContextPanel() {
       {showsBrush && <BrushSettings />}
       {tool === 'landBrush' && <BaseGroundSettings />}
       {tool === 'textureBrush' && <TextureSettings />}
+      {tool === 'pen' && <PenSettings />}
       {(tool === 'select' || tool === 'label') && <SelectionProperties />}
       {mode === 'world' && <WorldAppearance />}
       {mode === 'dungeon' && <DungeonGenerator />}

@@ -82,6 +82,12 @@ export function computeBounds(doc: MapDocument, mode: EditorMode): Bounds | null
       const d = img ? assetDims(a.assetId, img) : { w: ASSET_BASE, h: ASSET_BASE };
       ext(a.x, a.y, Math.max(d.w, d.h) * a.scale * 0.75);
     }
+    for (const id of scene.inkOrder) {
+      const k = scene.ink[id];
+      if (!k) continue;
+      const r = k.width / 2;
+      for (let i = 0; i < k.points.length; i += 2) ext(k.points[i], k.points[i + 1], r);
+    }
   };
 
   if (mode === 'world') {
@@ -153,6 +159,29 @@ function drawAssets(ctx: CanvasRenderingContext2D, scene: WorldScene | DungeonSc
     ctx.rotate((a.rotation * Math.PI) / 180);
     ctx.scale(a.scale * (a.flipX ? -1 : 1), a.scale);
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+}
+
+function drawInk(ctx: CanvasRenderingContext2D, scene: WorldScene | DungeonScene) {
+  for (const id of scene.inkOrder) {
+    const k = scene.ink[id];
+    if (!k || k.points.length < 4) continue;
+    const p = k.points;
+    ctx.save();
+    ctx.globalAlpha = k.opacity;
+    ctx.strokeStyle = k.color;
+    ctx.lineWidth = k.width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (k.dash) ctx.setLineDash([k.width * 2, k.width * 1.5]);
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    for (let i = 2; i < p.length - 2; i += 2) {
+      ctx.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
+    }
+    ctx.lineTo(p[p.length - 2], p[p.length - 1]);
+    ctx.stroke();
     ctx.restore();
   }
 }
@@ -295,6 +324,7 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(tc, 0, 0);
     ctx.restore();
+    drawInk(ctx, doc.world);
     drawAssets(ctx, doc.world);
     // Popisky
     ctx.textBaseline = 'top';
@@ -352,6 +382,7 @@ export async function exportMap(doc: MapDocument, mode: EditorMode, opts: Export
     // Sloučená podlaha + jeden obrys zdí (Dungeon Scrawl styl) + vržený stín
     const geom = computeDungeonGeometry(doc.dungeon, doc.dungeon.grid.cellSize);
     drawDungeon(ctx, geom, { grid: !!opts.grid, floorTexture: true, scale: ratio });
+    drawInk(ctx, doc.dungeon);
     drawAssets(ctx, doc.dungeon);
     if (opts.background !== 'transparent') drawFrame(ctx, minX, minY, W, H);
   }

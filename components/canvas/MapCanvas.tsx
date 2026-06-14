@@ -10,6 +10,7 @@ import { useAssetLibStore } from '@/store/assetLibStore';
 import BrushCursor from './BrushCursor';
 import AssetLayer from './AssetLayer';
 import LabelLayer from './LabelLayer';
+import InkLayer from './InkLayer';
 import TextureStroke, { paintTextureStroke, BaseGround } from './TextureStroke';
 import { computeDungeonGeometry, drawDungeon } from '@/lib/dungeonRender';
 import { computeBounds } from '@/lib/exportMap';
@@ -98,6 +99,10 @@ export default function MapCanvas() {
   const stageRef = useRef<Konva.Stage>(null);
   const liveLineRef = useRef<Konva.Line>(null);
   const liveShapeRef = useRef<Konva.Shape>(null);
+  const livePenRef = useRef<Konva.Line>(null);
+  const penDrawing = useRef(false);
+  const penPoints = useRef<number[]>([]);
+  const [penning, setPenning] = useState(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState(false);
 
@@ -115,11 +120,14 @@ export default function MapCanvas() {
   const stampRotation = useEditorStore((s) => s.stampRotation);
   const stampScale = useEditorStore((s) => s.stampScale);
   const stampScatter = useEditorStore((s) => s.stampScatter);
+  const pen = useEditorStore((s) => s.pen);
+  const selection = useEditorStore((s) => s.selection);
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const setSelection = useEditorStore((s) => s.setSelection);
   const importFile = useAssetLibStore((s) => s.importFile);
 
   const apply = useDocumentStore((s) => s.apply);
+  const rotateAssets = useDocumentStore((s) => s.rotateAssets);
   const worldAssetCount = useDocumentStore((s) => s.doc.world.assetOrder.length);
   const dungeonAssetCount = useDocumentStore((s) => s.doc.dungeon.assetOrder.length);
   const waterColor = useDocumentStore((s) => s.doc.world.waterStyle.color);
@@ -180,6 +188,12 @@ export default function MapCanvas() {
   // --- zoom ke kurzoru ---
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
+    // Select tool + výběr → kolečko otáčí vybranými prvky (Shift = jemně)
+    if (tool === 'select' && selection.length > 0 && !e.evt.ctrlKey && !e.evt.metaKey) {
+      const step = e.evt.shiftKey ? 2 : 15;
+      rotateAssets(mode, selection, e.evt.deltaY > 0 ? step : -step);
+      return;
+    }
     const pointer = stageRef.current?.getPointerPosition();
     if (!pointer) return;
     const old = camera.scale;
@@ -229,6 +243,20 @@ export default function MapCanvas() {
     apply('Chodba', (d) => {
       d.dungeon.corridors[id] = { id, points: pts, width: corridorWidth };
       d.dungeon.corridorOrder.push(id);
+    });
+  };
+
+  const finalizePen = () => {
+    const pts = penPoints.current;
+    penDrawing.current = false;
+    setPenning(false);
+    penPoints.current = [];
+    if (pts.length < 4) return;
+    const id = crypto.randomUUID();
+    apply('Pero', (d) => {
+      const scene = mode === 'world' ? d.world : d.dungeon;
+      scene.ink[id] = { id, points: pts, color: pen.color, width: pen.width, dash: pen.dash, opacity: pen.opacity };
+      scene.inkOrder.push(id);
     });
   };
 
@@ -309,6 +337,13 @@ export default function MapCanvas() {
       return;
     }
 
+    if (tool === 'pen') {
+      penDrawing.current = true;
+      penPoints.current = [w.x, w.y];
+      setPenning(true);
+      return;
+    }
+
     if (mode === 'world' && (tool === 'landBrush' || tool === 'erase')) {
       liveStroke.current = { kind: tool === 'erase' ? 'erase' : 'land', points: [w.x, w.y], size: brushSize };
       setStroking(true);
@@ -348,6 +383,16 @@ export default function MapCanvas() {
 
     const w = { x: (p.x - camera.x) / camera.scale, y: (p.y - camera.y) / camera.scale };
     setCursor(w);
+
+    if (penDrawing.current) {
+      penPoints.current.push(w.x, w.y);
+      const line = livePenRef.current;
+      if (line) {
+        line.points(penPoints.current);
+        line.getLayer()?.batchDraw();
+      }
+      return;
+    }
 
     if (liveStroke.current) {
       liveStroke.current.points.push(w.x, w.y);
@@ -391,7 +436,8 @@ export default function MapCanvas() {
       setDragging(false);
       return;
     }
-    if (liveStroke.current) finalizeStroke();
+    if (penDrawing.current) finalizePen();
+    else if (liveStroke.current) finalizeStroke();
     else if (roomStart.current) finalizeRoom();
     else if (corridorStart.current) finalizeCorridor();
   };
@@ -401,7 +447,8 @@ export default function MapCanvas() {
       panStart.current = null;
       setDragging(false);
     }
-    if (liveStroke.current) finalizeStroke();
+    if (penDrawing.current) finalizePen();
+    else if (liveStroke.current) finalizeStroke();
     else if (roomStart.current) finalizeRoom();
     else if (corridorStart.current) finalizeCorridor();
     setCursor(null);
@@ -433,6 +480,7 @@ export default function MapCanvas() {
 
   // --- odvozené ---
   const isDrawingTool =
+    tool === 'pen' ||
     (mode === 'world' && (tool === 'landBrush' || tool === 'erase' || tool === 'textureBrush')) ||
     (mode === 'dungeon' && (tool === 'room' || tool === 'corridor'));
   const cursorClass = isPanTool
@@ -643,6 +691,25 @@ export default function MapCanvas() {
           )}
 
           {mode === 'world' && <GridLayer view={view} baseCell={256} scale={camera.scale} color={gridColor} />}
+
+          {/* Volné tahy perem (řeky, cesty, poznámky) — pod prvky */}
+          <InkLayer mode={mode} />
+          {penning && (
+            <Layer listening={false}>
+              <Line
+                ref={livePenRef}
+                points={penPoints.current}
+                stroke={pen.color}
+                strokeWidth={pen.width}
+                opacity={pen.opacity}
+                lineCap="round"
+                lineJoin="round"
+                dash={pen.dash ? [pen.width * 2, pen.width * 1.5] : undefined}
+                listening={false}
+                perfectDrawEnabled={false}
+              />
+            </Layer>
+          )}
 
           {/* Položené prvky (sdílené bitmapy, výběr/transform v Select toolu) */}
           <AssetLayer mode={mode} />
